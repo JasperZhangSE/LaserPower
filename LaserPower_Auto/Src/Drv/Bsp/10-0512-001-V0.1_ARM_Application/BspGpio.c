@@ -1,0 +1,193 @@
+/*
+    BspGpio.c
+
+    Implementation File for STM32 BSP GPIO Module
+*/
+
+/* Copyright 2023 Shanghai Master Inc. */
+
+/*
+   Modification History
+   --------------------
+   01a 13Nov23 Ziv Created
+*/
+
+/* Includes */
+#include "BspGpio.h"
+
+/* Debug Config */
+#if GPIO_DEBUG
+    #undef TRACE
+    #define TRACE(...) DebugPrinf(__VA_ARGS__)
+#else
+    #undef TRACE
+    #define TRACE(...)
+#endif /* GPIO_DEBUG */
+#if GPIO_ASSERT
+    #undef ASSERT
+    #define ASSERT(a) while(!(a)){DebugPrintf("ASSERT failed: %s %d\n", __FILE__, __LINE__);}
+#else
+    #undef ASSERT
+    #define ASSERT(...)
+#endif /* GPIO_ASSERT */
+
+/* Pragmas */
+#pragma diag_suppress 1296 /* warning: #1296-D: extended constant initialiser used */
+
+/* Global variables */
+/* User should define the table somewhere, this is only an example */
+#if GPIO_DESP
+static GpioCtrl_t s_xGpioOut[] = {
+   {LED_SYS,        PORT(LED_SYS),        PIN(LED_SYS),        GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "LED_SYS"        },
+   {LED1,           PORT(LED1),           PIN(LED1),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "LED1"           },
+   {LED2,           PORT(LED2),           PIN(LED2),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "LED2"           },
+   {LED3,           PORT(LED3),           PIN(LED3),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "LED3"           },
+   {LED4,           PORT(LED4),           PIN(LED4),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "LED4"           },
+   {LED5,           PORT(LED5),           PIN(LED5),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "LED5"           },
+   {LED6,           PORT(LED6),           PIN(LED6),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "LED6"           },
+
+   {RS485a_EN,      PORT(RS485a_EN),      PIN(RS485a_EN),      GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "RS485a_EN"      },
+
+   {RS485b_EN,      PORT(RS485b_EN),      PIN(RS485b_EN),      GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "RS485b_EN"      },
+
+   {ETH_RST,        PORT(ETH_RST),        PIN(ETH_RST),        GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "ETH_RST"        },
+   {ETH_EN,         PORT(ETH_EN),         PIN(ETH_EN),         GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "ETH_EN"         },
+
+   {MPWR_EN,        PORT(MPWR_EN),        PIN(MPWR_EN),        GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "MPWR_EN"        },
+
+   {APWR1_EN,       PORT(APWR1_EN),       PIN(APWR1_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "APWR1_EN"       },
+   {APWR2_EN,       PORT(APWR2_EN),       PIN(APWR2_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "APWR2_EN"       },
+   {APWR3_EN,       PORT(APWR3_EN),       PIN(APWR3_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "APWR3_EN"       },
+
+   {LED_CTRL,       PORT(LED_CTRL),       PIN(LED_CTRL),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "LED_CTRL"       },
+};
+
+static GpioCtrl_t s_xGpioIn[] = {
+   {MPWR_STAT_AC,   PORT(MPWR_STAT_AC),   PIN(MPWR_STAT_AC),   GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "MPWR_STAT_AC"   },
+   {MPWR_STAT_DC,   PORT(MPWR_STAT_DC),   PIN(MPWR_STAT_DC),   GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "MPWR_STAT_DC"   },
+
+   {APWR1_STAT,     PORT(APWR1_STAT),     PIN(APWR1_STAT),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "APWR1_STAT"     },
+   {APWR2_STAT,     PORT(APWR2_STAT),     PIN(APWR2_STAT),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "APWR2_STAT"     },
+   {APWR3_STAT,     PORT(APWR3_STAT),     PIN(APWR3_STAT),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "APWR3_STAT"     },
+
+   {QBH_ON,         PORT(QBH_ON),         PIN(QBH_ON),         GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "QBH_ON"         },
+   {EX_CTRL_EN,       PORT(EX_CTRL_EN),       PIN(EX_CTRL_EN),       GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "EX_CTRL_EN"       },
+   {WATER_PRESS,    PORT(WATER_PRESS),    PIN(WATER_PRESS),    GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "WATER_PRESS"    },
+   {WATER_CHILLER,  PORT(WATER_CHILLER),  PIN(WATER_CHILLER),  GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH,      "WATER_CHILLER"  },
+
+};
+#elif 0
+
+static GpioCtrl_t s_xGpioOut[] = {
+   {LED_SYS,        PORT(LED_SYS),        PIN(LED_SYS),        GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED1,           PORT(LED1),           PIN(LED1),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED2,           PORT(LED2),           PIN(LED2),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED3,           PORT(LED3),           PIN(LED3),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED4,           PORT(LED4),           PIN(LED4),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED5,           PORT(LED5),           PIN(LED5),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED6,           PORT(LED6),           PIN(LED6),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {RS485a_EN,      PORT(RS485a_EN),      PIN(RS485a_EN),      GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {RS485b_EN,      PORT(RS485b_EN),      PIN(RS485b_EN),      GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {ETH_RST,        PORT(ETH_RST),        PIN(ETH_RST),        GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {ETH_EN,         PORT(ETH_EN),         PIN(ETH_EN),         GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {MPWR_EN,        PORT(MPWR_EN),        PIN(MPWR_EN),        GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {APWR1_EN,       PORT(APWR1_EN),       PIN(APWR1_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {APWR2_EN,       PORT(APWR2_EN),       PIN(APWR2_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {APWR3_EN,       PORT(APWR3_EN),       PIN(APWR3_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {LED_CTRL,       PORT(LED_CTRL),       PIN(LED_CTRL),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+};
+
+static GpioCtrl_t s_xGpioIn[] = {
+   {MPWR_STAT_AC,   PORT(MPWR_STAT_AC),   PIN(MPWR_STAT_AC),   GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {MPWR_STAT_DC,   PORT(MPWR_STAT_DC),   PIN(MPWR_STAT_DC),   GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {APWR1_STAT,     PORT(APWR1_STAT),     PIN(APWR1_STAT),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {APWR2_STAT,     PORT(APWR2_STAT),     PIN(APWR2_STAT),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {APWR3_STAT,     PORT(APWR3_STAT),     PIN(APWR3_STAT),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {QBH_ON,         PORT(QBH_ON),         PIN(QBH_ON),         GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {EX_CTRL_EN,       PORT(EX_CTRL_EN),       PIN(EX_CTRL_EN),       GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {WATER_PRESS,    PORT(WATER_PRESS),    PIN(WATER_PRESS),    GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {WATER_CHILLER,  PORT(WATER_CHILLER),  PIN(WATER_CHILLER),  GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+};
+
+#else
+
+static GpioCtrl_t s_xGpioOut[] = {
+   //{LED_SYS,        PORT(LED_SYS),        PIN(LED_SYS),        GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED1,           PORT(LED1),           PIN(LED1),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED2,           PORT(LED2),           PIN(LED2),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED3,           PORT(LED3),           PIN(LED3),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED4,           PORT(LED4),           PIN(LED4),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED5,           PORT(LED5),           PIN(LED5),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {LED6,           PORT(LED6),           PIN(LED6),           GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {RS485a_EN,      PORT(RS485a_EN),      PIN(RS485a_EN),      GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {RS485b_EN,      PORT(RS485b_EN),      PIN(RS485b_EN),      GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {ETH_RST,        PORT(ETH_RST),        PIN(ETH_RST),        GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {ETH_EN,         PORT(ETH_EN),         PIN(ETH_EN),         GPIO_ON,       GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   
+   {MPWR_T_EN,      PORT(MPWR_T_EN),      PIN(MPWR_T_EN),      GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {MPWR_M_EN,      PORT(MPWR_M_EN),      PIN(MPWR_M_EN),      GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {MPWR_B_EN,      PORT(MPWR_B_EN),      PIN(MPWR_B_EN),      GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   
+   {APWR1_EN,       PORT(APWR1_EN),       PIN(APWR1_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {APWR2_EN,       PORT(APWR2_EN),       PIN(APWR2_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {APWR3_EN,       PORT(APWR3_EN),       PIN(APWR3_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   //{LED_CTRL,       PORT(LED_CTRL),       PIN(LED_CTRL),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {I2C_SCL,        PORT(I2C_SCL),        PIN(I2C_SCL),        GPIO_OFF,      GPIO_MODE_OUTPUT_OD,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {I2C_SDA,        PORT(I2C_SDA),        PIN(I2C_SDA),        GPIO_OFF,      GPIO_MODE_OUTPUT_OD,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+};
+
+static GpioCtrl_t s_xGpioIn[] = {
+   {MPWR_T_STAT_AC, PORT(MPWR_T_STAT_AC), PIN(MPWR_T_STAT_AC), GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {MPWR_T_STAT_DC, PORT(MPWR_T_STAT_DC), PIN(MPWR_T_STAT_DC), GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {MPWR_M_STAT_AC, PORT(MPWR_M_STAT_AC), PIN(MPWR_M_STAT_AC), GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {MPWR_M_STAT_DC, PORT(MPWR_M_STAT_DC), PIN(MPWR_M_STAT_DC), GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {MPWR_B_STAT_AC, PORT(MPWR_B_STAT_AC), PIN(MPWR_B_STAT_AC), GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {MPWR_B_STAT_DC, PORT(MPWR_B_STAT_DC), PIN(MPWR_B_STAT_DC), GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {APWR1_STAT,     PORT(APWR1_STAT),     PIN(APWR1_STAT),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {APWR2_STAT,     PORT(APWR2_STAT),     PIN(APWR2_STAT),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {APWR3_STAT,     PORT(APWR3_STAT),     PIN(APWR3_STAT),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+   {QBH_ON,         PORT(QBH_ON),         PIN(QBH_ON),         GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {EX_CTRL_EN,     PORT(EX_CTRL_EN),     PIN(EX_CTRL_EN),     GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {WATER_PRESS,    PORT(WATER_PRESS),    PIN(WATER_PRESS),    GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+   {WATER_CHILLER,  PORT(WATER_CHILLER),  PIN(WATER_CHILLER),  GPIO_OFF,      GPIO_MODE_INPUT,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
+
+};
+
+#endif /* GPIO_DESP */
+
+/* Function */
+GpioCtrl_t* GpioGetOutCtrl(void)
+{
+    return s_xGpioOut;
+}
+
+GpioCtrl_t* GpioGetInCtrl(void)
+{
+    return s_xGpioIn;
+}
+
+uint16_t GpioGetOutCtrlNum(void)
+{
+    return sizeof(s_xGpioOut)/sizeof(s_xGpioOut[0]);
+}
+
+uint16_t GpioGetInCtrlNum(void)
+{
+    return sizeof(s_xGpioIn)/sizeof(s_xGpioIn[0]);
+}

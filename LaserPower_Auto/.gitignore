@@ -1,0 +1,40 @@
+# Keil Generated output files in the sub-directories .\Listings and .\Objects
+*.lst
+*.o
+*.d
+*.crf
+*.lnp
+*.axf
+*.htm
+*.build_log.htm
+*.dep
+*.iex
+*.i
+*.bin
+*.hex
+
+#Keil Project screen layout file
+*.uvguix.*
+*.uvgui.*
+
+#JLINK file
+JLinkLog.txt
+
+MKD-ARM
+MDK-ARM/.vscode/
+MDK-ARM/DebugConfig/
+MDK-ARM/intelligent_fan_desk_lamp/
+MDK-ARM/RTE/
+
+Prj/ARM_Application/Objects
+Prj/ARM_Application/Listings
+Prj/ARM_Application/DebugConfig
+
+Prj/ARM_BootLoader/Objects
+Prj/ARM_BootLoader/Listings
+Prj/ARM_BootLoader/DebugConfig
+
+
+
+
+

@@ -1,0 +1,110 @@
+/*
+    stm32f1xx_it.c
+    
+    Implementation File for STM32 Interrupt Handler Module
+*/
+
+/* Copyright 2019 Shanghai Master Inc. */
+
+/*
+    Modification History
+    --------------------
+    01a, 20Aug19, Karl Created
+*/
+  
+/* Includes */
+#include "stm32f1xx_hal.h"
+#include "stm32f1xx.h"
+#include "stm32f1xx_it.h"
+#include "cmsis_os.h"
+
+/* Forward declaration */
+extern ETH_HandleTypeDef heth;
+extern TIM_HandleTypeDef htim7;
+
+/******************************************************************************/
+/*            Cortex-M3 Processor Interruption and Exception Handlers         */
+/******************************************************************************/
+
+/**
+* @brief This function handles Non maskable interrupt.
+*/
+void NMI_Handler(void)
+{
+    /* TODO: NMI_Handler */
+}
+
+/**
+* @brief This function handles Hard fault interrupt.
+*/
+void HardFault_Handler(void)
+{
+    while (1) {
+    }
+}
+
+/**
+* @brief This function handles Memory management fault.
+*/
+void MemManage_Handler(void)
+{
+    while (1) {
+    }
+}
+
+/**
+* @brief This function handles Prefetch fault, memory access fault.
+*/
+void BusFault_Handler(void)
+{
+    while (1) {
+    }
+}
+
+/**
+* @brief This function handles Undefined instruction or illegal state.
+*/
+void UsageFault_Handler(void)
+{
+    while (1) {
+    }
+}
+
+/**
+* @brief This function handles Debug monitor.
+*/
+void DebugMon_Handler(void)
+{
+    /* TODO: DebugMon_Handler */
+}
+
+/**
+* @brief This function handles System tick timer.
+*/
+void SysTick_Handler(void)
+{
+    osSystickHandler();
+}
+
+/******************************************************************************/
+/* STM32F1xx Peripheral Interrupt Handlers                                    */
+/* Add here the Interrupt Handlers for the used peripherals.                  */
+/* For the available peripheral interrupt handler names,                      */
+/* please refer to the startup file (startup_stm32f1xx.s).                    */
+/******************************************************************************/
+
+/**
+* @brief This function handles TIM7 global interrupt.
+*/
+void TIM7_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&htim7);
+}
+
+/**
+* @brief This function handles Ethernet global interrupt.
+*/
+void ETH_IRQHandler(void)
+{
+    HAL_ETH_IRQHandler(&heth);
+}

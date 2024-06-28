@@ -1,0 +1,132 @@
+/*
+    BspTim.h
+
+    Implementation File for STM32 BSP TIM Module
+*/
+
+/* Copyright 2019 Shanghai Master Inc. */
+
+/*
+    Modification History
+    --------------------
+    01a 23Aug19 Ziv Created
+    01b 12Mar20 Karl Fixed incorrect __HAL_AFIO_REMAP_TIMx_ENABLE
+*/
+
+#ifndef __BSP_TIM_H__
+#define __BSP_TIM_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif /*__cplusplus */
+
+/* Includes */
+#include <stm32f1xx_hal.h>
+
+/* TODO: Please select the TIM channel */
+#error If TIM_PWM is used, user should define TIMx_CHn_PWM_ENABLE_Pxx & TIMn_AFIO_REMAP
+
+#if 0
+/* Defines */
+/* TIM-1 */
+/* __HAL_AFIO_REMAP_TIM1_ENABLE */
+/* ENABLE: Full remap(ETR/PE7, CH1/PE9, CH2/PE11, CH3/PE13, CH4/PE14, BKIN/PE15, CH1N/PE8, CH2N/PE10, CH3N/PE12) */
+#define TIM1_CH1_PWM_ENABLE_PE9
+#define TIM1_CH2_PWM_ENABLE_PE11
+#define TIM1_CH3_PWM_ENABLE_PE13
+#define TIM1_CH4_PWM_ENABLE_PE14
+#define TIM1_AFIO_REMAP             __HAL_AFIO_REMAP_TIM1_ENABLE
+/* __HAL_AFIO_REMAP_TIM1_PARTIAL */
+/* PARTIAL: Partial remap(ETR/PA12, CH1/PA8, CH2/PA9, CH3/PA10, CH4/PA11, BKIN/PA6, CH1N/PA7, CH2N/PB0, CH3N/PB1) */
+#define TIM1_CH1_PWM_ENABLE_PA8
+#define TIM1_CH2_PWM_ENABLE_PA9
+#define TIM1_CH3_PWM_ENABLE_PA10
+#define TIM1_CH4_PWM_ENABLE_PA11
+#define TIM1_AFIO_REMAP             __HAL_AFIO_REMAP_TIM1_PARTIAL
+/* __HAL_AFIO_REMAP_TIM1_DISABLE */
+/* DISABLE: No remap(ETR/PA12, CH1/PA8, CH2/PA9, CH3/PA10, CH4/PA11, BKIN/PB12, CH1N/PB13, CH2N/PB14, CH3N/PB15) */
+#define TIM1_CH1_PWM_ENABLE_PA8
+#define TIM1_CH2_PWM_ENABLE_PA9
+#define TIM1_CH3_PWM_ENABLE_PA10
+#define TIM1_CH4_PWM_ENABLE_PA11
+#define TIM1_AFIO_REMAP             __HAL_AFIO_REMAP_TIM1_DISABLE
+
+/* TIM-2 */
+/* __HAL_AFIO_REMAP_TIM2_ENABLE */
+/* ENABLE: Full remap(CH1/ETR/PA15, CH2/PB3, CH3/PB10, CH4/PB11) */
+#define TIM2_CH1_PWM_ENABLE_PA15
+#define TIM2_CH2_PWM_ENABLE_PB3
+#define TIM2_CH3_PWM_ENABLE_PB10
+#define TIM2_CH4_PWM_ENABLE_PB11
+#define TIM2_AFIO_REMAP             __HAL_AFIO_REMAP_TIM2_ENABLE
+/* __HAL_AFIO_REMAP_TIM2_PARTIAL_2 */
+/* PARTIAL_2: Partial remap(CH1/ETR/PA0, CH2/PA1, CH3/PB10, CH4/PB11) */
+#define TIM2_CH1_PWM_ENABLE_PA0
+#define TIM2_CH2_PWM_ENABLE_PA1
+#define TIM2_CH3_PWM_ENABLE_PB10
+#define TIM2_CH4_PWM_ENABLE_PB11
+#define TIM2_AFIO_REMAP             __HAL_AFIO_REMAP_TIM2_PARTIAL_2
+/* __HAL_AFIO_REMAP_TIM2_PARTIAL_1 */
+/* PARTIAL_1: Partial remap(CH1/ETR/PA15, CH2/PB3, CH3/PA2, CH4/PA3) */
+#define TIM2_CH1_PWM_ENABLE_PA15
+#define TIM2_CH2_PWM_ENABLE_PB3
+#define TIM2_CH3_PWM_ENABLE_PA2
+#define TIM2_CH4_PWM_ENABLE_PA3
+#define TIM2_AFIO_REMAP             __HAL_AFIO_REMAP_TIM2_PARTIAL_1
+/* __HAL_AFIO_REMAP_TIM2_DISABLE */
+/* DISABLE: No remap(CH1/ETR/PA0, CH2/PA1, CH3/PA2, CH4/PA3) */
+#define TIM2_CH1_PWM_ENABLE_PA0
+#define TIM2_CH2_PWM_ENABLE_PA1
+#define TIM2_CH3_PWM_ENABLE_PA2
+#define TIM2_CH4_PWM_ENABLE_PA3
+#define TIM2_AFIO_REMAP             __HAL_AFIO_REMAP_TIM2_DISABLE
+
+/* TIM-3 */
+/* __HAL_AFIO_REMAP_TIM3_ENABLE */
+/* ENABLE: Full remap(CH1/PC6, CH2/PC7, CH3/PC8, CH4/PC9) TIM3_ETR on PE0 is not remapped. */
+#define TIM3_CH1_PWM_ENABLE_PC6
+#define TIM3_CH2_PWM_ENABLE_PC7
+#define TIM3_CH3_PWM_ENABLE_PC8
+#define TIM3_CH4_PWM_ENABLE_PC9
+#define TIM3_AFIO_REMAP             __HAL_AFIO_REMAP_TIM3_ENABLE
+/* __HAL_AFIO_REMAP_TIM3_PARTIAL */
+/* PARTIAL: Partial remap(CH1/PB4, CH2/PB5, CH3/PB0, CH4/PB1) TIM3_ETR on PE0 is not remapped. */
+#define TIM3_CH1_PWM_ENABLE_PB4
+#define TIM3_CH2_PWM_ENABLE_PB5
+#define TIM3_CH3_PWM_ENABLE_PB0
+#define TIM3_CH4_PWM_ENABLE_PB1
+#define TIM3_AFIO_REMAP             __HAL_AFIO_REMAP_TIM3_PARTIAL
+/* __HAL_AFIO_REMAP_TIM3_DISABLE */
+/* DISABLE: No remap(CH1/PA6, CH2/PA7, CH3/PB0, CH4/PB1) TIM3_ETR on PE0 is not remapped. */
+#define TIM3_CH1_PWM_ENABLE_PA6
+#define TIM3_CH2_PWM_ENABLE_PA7
+#define TIM3_CH3_PWM_ENABLE_PB0
+#define TIM3_CH4_PWM_ENABLE_PB1
+#define TIM3_AFIO_REMAP             __HAL_AFIO_REMAP_TIM3_DISABLE
+
+/* TIM-4 */
+/* __HAL_AFIO_REMAP_TIM4_ENABLE */
+/* ENABLE: Full remap(TIM4_CH1/PD12, TIM4_CH2/PD13, TIM4_CH3/PD14, TIM4_CH4/PD15) TIM4_ETR on PE0 is not re-mapped. */
+#define TIM4_CH1_PWM_ENABLE_PD12
+#define TIM4_CH2_PWM_ENABLE_PD13
+#define TIM4_CH3_PWM_ENABLE_PD14
+#define TIM4_CH4_PWM_ENABLE_PD15
+#define TIM4_AFIO_REMAP             __HAL_AFIO_REMAP_TIM4_ENABLE
+/* __HAL_AFIO_REMAP_TIM4_DISABLE(DISABLE: No remap(TIM4_CH1/PB6, TIM4_CH2/PB7, TIM4_CH3/PB8, TIM4_CH4/PB9) TIM4_ETR on PE0 is not re-mapped.) */
+#define TIM4_CH1_PWM_ENABLE_PB6
+#define TIM4_CH2_PWM_ENABLE_PB7
+#define TIM4_CH3_PWM_ENABLE_PB8
+#define TIM4_CH4_PWM_ENABLE_PB9
+#define TIM4_AFIO_REMAP             __HAL_AFIO_REMAP_TIM4_DISABLE
+#endif
+
+/* Functions */
+void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* pxTim);
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef* pxTim);
+void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* pxTim);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif /* __BSP_TIM_H__ */

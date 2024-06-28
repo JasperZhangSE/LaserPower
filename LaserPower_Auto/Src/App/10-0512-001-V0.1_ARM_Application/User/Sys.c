@@ -1,0 +1,1327 @@
+/*
+    Sys.c
+
+    Implementation File for App Sys Module
+*/
+
+/* Copyright 2023 Shanghai Master Inc. */
+
+/*
+    modification history
+    --------------------
+    01a, 22Nov23, Karl Created
+    01b, 04Dec23, Karl Added SysGetFsm
+    01c, 06Dec23, Karl Added sys_fsm
+    01d, 22Dec23, Karl Added current limitation in LaserOn function
+    01e, 27Dec23, Karl Fixed s_ucAPwrCtrl1, s_ucAPwrCtrl2 and s_ucAPwrCtrl3 bug
+    01f, 27Dec23, Karl Added s_bManualCtrl
+    01g, 15Jan24, Karl PD check in prvChkAPwr
+    01h, 17Jan24, Karl Modified LaserOn to limit current less than th_WorkCur
+    01i, 20Jan24, Karl Added th_CompRate for current output
+    01j, 20Jan24, Karl Added th_SysStatus
+    01k, 22Jan24, Karl Added show_sys_status
+    01l, 23Jan24, Karl Added th_SysDebug
+    01m, 24Jan24, Karl Added th_VerChk
+    01n, 26Jan24, Karl Added th_SwInfo
+    01o, 29Jan24, Karl Added dynamic current adjustment
+    01p, 30Jan24, Karl Optimized prvChkMPwr function
+*/
+
+/* Includes */
+#include "Include.h"
+
+#undef SYS_DEBUG
+#define SYS_DEBUG       1   /* XXX: SYS_DEBUG */
+
+#undef PWR_50KW_TEST
+#define PWR_50KW_TEST   1
+
+/* Debug config */
+#if SYS_DEBUG
+    #undef TRACE
+    #define TRACE(...) if (th_SysDebug) DebugPrintf(__VA_ARGS__)
+#else
+    #undef TRACE
+    #define TRACE(...)
+#endif /* SYS_DEBUG */
+#if SYS_ASSERT
+    #undef ASSERT
+    #define ASSERT(a)   while(!(a)){DebugPrintf("ASSERT failed: %s %d\n", __FILE__, __LINE__);}
+#else
+    #undef ASSERT
+    #define ASSERT(...)
+#endif /* SYS_ASSERT */
+
+/* Local defines */
+#define SYS_SAVELASTSTATES()    pxState->xLastState = pxState->xState;
+#define SYS_TICK_GET()          osKernelSysTick()
+#define LED_ALARM_R             LED1
+#define LED_ALARM_G             LED2
+#define LED_ACTIVE_R            LED3
+#define LED_ACTIVE_G            LED4
+#define LED_POWER_R             LED5
+#define LED_POWER_G             LED6
+#define LED_ON                  1
+#define LED_OFF                 0
+#define MPWR_DC_OK              1
+#define MPWR_AC_OK              1
+#define MPWR_ON                 1
+#define MPWR_OFF                0
+#define APWR_OK                 1
+#define APWR_ON                 1
+#define APWR_OFF                0
+#define LED_CTRL_ON             1
+#define LED_CTRL_OFF            0
+#define QBH_ON_ON               0
+#define QBH_ON_OFF              1
+#define WATER_PRESS_ON          0
+#define WATER_PRESS_OFF         1
+#define WATER_CHILLER_ON        0
+#define WATER_CHILLER_OFF       1
+
+/* Forward declaration */
+static void prvSysTask        (void* pvPara);
+static void prvDaemonTask     (void* pvPara);
+//static void prvSysLEDTask     (void* pvPara);
+    
+/* State machine */
+static void prvProc           (void);
+static void prvFsmStart       (State_t *pxState);
+static void prvFsmInitMpwr    (State_t *pxState);
+static void prvFsmReady       (State_t *pxState);
+static void prvFsmIdle        (State_t *pxState);
+static void prvFsmLaserSInit  (State_t *pxState);
+static void prvFsmLaserSRun   (State_t *pxState);
+static void prvFsmLaserSDone  (State_t *pxState);
+static void prvFsmLaserMInit  (State_t *pxState);
+static void prvFsmLaserMRun   (State_t *pxState);
+static void prvFsmLaserMDone  (State_t *pxState);
+static void prvFsmInfraredInit(State_t *pxState);
+static void prvFsmInfraredRun (State_t *pxState);
+static void prvFsmInfraredDone(State_t *pxState);
+static void prvFsmError       (State_t *pxState);
+/* Help functions */
+static bool prvInitChkMPwr    (void);
+static bool prvChkPwr         (void);
+static bool prvChkMPwr        (void);
+static bool prvChkAPwr        (void);
+static void prvEnterFsm       (void);
+static void prvProcManualCtrl (void);
+static void prvProcPanelLed   (void);
+static void prvChkCtrl        (void);
+
+/* Global variables */
+State_t *g_pxState = NULL;
+SysStatus_t g_xSysStatus;
+uint8_t g_ucVerChk = 0;
+uint16_t g_usSwInfo = 0x0000;
+
+/* Local variables */
+static State_t s_xState;
+#if ENABLE_SYS_AUTO
+static bool s_bProc = true;
+#else
+static bool s_bProc = false;
+#endif /* ENABLE_SYS_AUTO */
+static bool s_bManualCtrl = true;
+static uint32_t s_ulCurrent = 0; /* 0.1A */
+static uint8_t s_ucAPwrCtrl1 = APWR_OFF;
+static uint8_t s_ucAPwrCtrl2 = APWR_OFF;
+static uint8_t s_ucAPwrCtrl3 = APWR_OFF;
+
+/* Functions */
+Status_t AppSysInit(void)
+{
+#if ENABLE_SYS_AUTO
+    /* 9.5KW */
+    if (th_PwrType == 1)
+        DrvPwr1Enable();
+    /* 18KW */
+    if (th_PwrType == 2)
+        DrvPwr2Enable();
+#endif /* ENABLE_SYS_AUTO */
+    DrvPwrInit();
+    /* 设置占空比为FLASH中的值 */
+    //Set_AimLight_Cur(th_PwmDuty);
+    /* Check internal or external control. */
+    prvChkCtrl();
+    
+    memset(&s_xState, 0, sizeof(s_xState));
+    g_pxState        = &s_xState;
+    s_xState.xState  = FSM_START;
+    g_xSysStatus.all = 0;
+    xTaskCreate(prvSysTask, "tSys", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(prvDaemonTask, "tDaemon", 256, NULL, tskIDLE_PRIORITY + 0, NULL);
+    
+    //xTaskCreate(prvSysLEDTask, "tSysLed", 256, NULL, tskIDLE_PRIORITY + 0, NULL);
+    
+    return STATUS_OK;
+}
+
+Status_t AppSysTerm(void)
+{
+    /* Do nothing */
+    return STATUS_OK;
+}
+
+Fsm_t SysGetFsm(void)
+{
+    return s_xState.xState;
+}
+
+Status_t LaserOn(uint32_t ulCurrent, uint32_t ulSelect)
+{
+    State_t *pxState = &s_xState;
+    
+    if ((pxState->xState == FSM_IDLE) && prvChkMPwr() && ulSelect && (ulCurrent <= th_WorkCur)) {
+        if (th_ModEn.CHAN_CTRL) {
+            (ulSelect & 0x01) ? (s_ucAPwrCtrl1 = APWR_ON) : 0;
+            (ulSelect & 0x02) ? (s_ucAPwrCtrl2 = APWR_ON) : 0;
+            (ulSelect & 0x04) ? (s_ucAPwrCtrl3 = APWR_ON) : 0;
+        }
+        else {
+            s_ucAPwrCtrl1 = APWR_ON;
+            s_ucAPwrCtrl2 = APWR_ON;
+            s_ucAPwrCtrl3 = APWR_ON;
+        }
+        s_ulCurrent = ulCurrent * (1000 + th_CompRate) / 1000;
+        pxState->xState = FSM_LASERs_INIT;
+        pxState->ulCounter = 0;
+        TRACE("[%6d] Idle         -> LaserSInit\n", SYS_TICK_GET());
+        TRACE("[%6d]     Cur %.1f\n", SYS_TICK_GET(), ulCurrent / 10.);
+        TRACE("[%6d]     Sel %d\n", SYS_TICK_GET(), ulSelect);
+        return STATUS_OK;
+    }
+    else if ((pxState->xState == FSM_LASERs_INIT) && prvChkMPwr() && ulSelect && (ulCurrent <= th_WorkCur)) {
+        s_ulCurrent = ulCurrent * (1000 + th_CompRate) / 1000;
+        pxState->xState = FSM_LASERs_INIT;
+        pxState->ulCounter = 0;
+        TRACE("[%6d] LaserSInit   -> LaserSInit\n", SYS_TICK_GET());
+        TRACE("[%6d]     Cur %.1f\n", SYS_TICK_GET(), ulCurrent / 10.);
+        TRACE("[%6d]     Sel %d\n", SYS_TICK_GET(), ulSelect);
+        return STATUS_OK;
+    }
+    else if ((pxState->xState == FSM_LASERs_RUN) && prvChkMPwr() && ulSelect && (ulCurrent <= th_WorkCur)) {
+        s_ulCurrent = ulCurrent * (1000 + th_CompRate) / 1000;
+        pxState->xState = FSM_LASERs_INIT;
+        pxState->ulCounter = 0;
+        TRACE("[%6d] LaserSRun    -> LaserSInit\n", SYS_TICK_GET());
+        TRACE("[%6d]     Cur %.1f\n", SYS_TICK_GET(), ulCurrent / 10.);
+        TRACE("[%6d]     Sel %d\n", SYS_TICK_GET(), ulSelect);
+        return STATUS_OK;
+    }
+    else {
+        return STATUS_ERR;
+    }
+}
+
+Status_t LaserOff(uint32_t ulSelect)
+{
+    State_t *pxState = &s_xState;
+    
+    if ((pxState->xState == FSM_LASERs_RUN) && ulSelect) {
+        if (th_ModEn.CHAN_CTRL) {
+            (ulSelect & 0x01) ? (s_ucAPwrCtrl1 = APWR_OFF) : 0;
+            (ulSelect & 0x02) ? (s_ucAPwrCtrl2 = APWR_OFF) : 0;
+            (ulSelect & 0x04) ? (s_ucAPwrCtrl3 = APWR_OFF) : 0;
+        }
+        else {
+            s_ucAPwrCtrl1 = APWR_OFF;
+            s_ucAPwrCtrl2 = APWR_OFF;
+            s_ucAPwrCtrl3 = APWR_OFF;
+        }
+        if ((s_ucAPwrCtrl1 == APWR_OFF) && (s_ucAPwrCtrl2 == APWR_OFF) && (s_ucAPwrCtrl3 == APWR_OFF)) {
+            pxState->xState = FSM_LASERs_DONE;
+            pxState->ulCounter = 0;
+            TRACE("[%6d] LaserSRun    -> LaserSDone\n", SYS_TICK_GET());
+        }
+        GpioSetOutput(APWR1_EN, s_ucAPwrCtrl1);
+        GpioSetOutput(APWR2_EN, s_ucAPwrCtrl2);
+        GpioSetOutput(APWR3_EN, s_ucAPwrCtrl3);
+        if (s_ucAPwrCtrl1 == APWR_OFF) {
+            DacSet(APWR1_CTRL, CUR_TO_DAC(0));
+        }
+        if (s_ucAPwrCtrl2 == APWR_OFF) {
+            DacSet(APWR2_CTRL, CUR_TO_DAC(0));
+        }
+        if (s_ucAPwrCtrl3 == APWR_OFF) {
+            DacSet(APWR3_CTRL, CUR_TO_DAC(0));
+        }
+        TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl1, DAC_TO_CUR(DacGet(APWR1_CTRL)), DAC_TO_MVOL(DacGet(APWR1_CTRL)));
+        TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl2, DAC_TO_CUR(DacGet(APWR2_CTRL)), DAC_TO_MVOL(DacGet(APWR2_CTRL)));
+        TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl3, DAC_TO_CUR(DacGet(APWR3_CTRL)), DAC_TO_MVOL(DacGet(APWR3_CTRL)));
+        return STATUS_OK;
+    }
+    else {
+        return STATUS_ERR;
+    }
+}
+
+Status_t InfraredOn(void)
+{
+    State_t *pxState = &s_xState;
+    
+    if (pxState->xState == FSM_IDLE) {
+        pxState->xState = FSM_INFRARED_INIT;
+        pxState->ulCounter = 0;
+        TRACE("[%6d] Idle         -> InfraredInit\n", SYS_TICK_GET());
+        return STATUS_OK;
+    }
+    else {
+        return STATUS_ERR;
+    }
+}
+
+Status_t InfraredOff(void)
+{
+    State_t *pxState = &s_xState;
+    
+    if (pxState->xState == FSM_INFRARED_RUN) {
+        pxState->xState = FSM_INFRARED_DONE;
+        pxState->ulCounter = 0;
+        TRACE("[%6d] InfraredRun  -> InfraredDone\n", SYS_TICK_GET());
+        return STATUS_OK;
+    }
+    else {
+        return STATUS_ERR;
+    }
+}
+
+Status_t EnableManualCtrl(uint8_t ucEnable)
+{
+    if (!th_ModEn.MANUAL) {
+        return STATUS_ERR;
+    }
+    (ucEnable == 0xA5) ? (s_bManualCtrl = true) : (s_bManualCtrl = false);
+    return STATUS_OK;
+}
+
+static void prvSysTask(void* pvPara)
+{
+    WdogInit();
+    
+    /* Check if software can be used! */
+    if (0 == th_Trial) {
+        th_VerChk = 1;
+        th_SwInfo = 0x8000;
+    }
+    else {
+        Time_t xTm = RtcReadTime(RTC_TYPE_DS1338);
+        uint32_t ulCurrentTime = mktime(&xTm);
+        uint32_t ulExpiredTime = th_TrialStTime + th_TrialDays * 86400;
+        if (ulCurrentTime < ulExpiredTime) {
+            th_VerChk = 1;
+            th_SwInfo = (ulExpiredTime - ulCurrentTime) / 86400 + (((ulExpiredTime - ulCurrentTime) % 86400) ? 1 : 0);
+        }
+        else {
+            th_VerChk = 0;
+            th_SwInfo = 0;
+        }
+    }
+    osDelay(SYS_TASK_INIT_WAIT);
+    while (1) {
+        if (s_bProc) {
+            prvProc();
+        }
+        WdogFeed();
+        osDelay(SYS_TASK_DELAY);
+    }
+}
+
+static void prvDaemonTask(void* pvPara)
+{
+    while (1) {
+        prvProcManualCtrl();
+        prvProcPanelLed();
+        osDelay(LED_TASK_DELAY);
+    }
+}
+
+#if 0
+static void prvSysLEDTask(void* pvPara)
+{
+    uint16_t light = 0;
+    while (1) {
+        if (s_bSysLed)
+        {
+            for (light = 0; light <= 100; light++)
+            {
+                Set_SysLed_Light(light);
+                osDelay(10);
+            }
+            osDelay(280);
+            for (light = 100; light > 0; light--)
+            {
+                Set_SysLed_Light(light);
+                osDelay(10);
+            }
+        }
+        osDelay(360);
+        //TRACE("SYS_LED_OK\n");
+    }
+}
+#endif
+
+static void prvProc(void)
+{
+    State_t *pxState = &s_xState;
+    
+    /* Process state machine */
+    switch (pxState->xState) {
+    case FSM_START:
+        prvFsmStart(pxState);
+        break;
+    
+    case FSM_INIT_MPWR:
+        prvFsmInitMpwr(pxState);
+        break;
+    
+    case FSM_READY:
+        prvFsmReady(pxState);
+        break;
+        
+    case FSM_IDLE:
+        prvFsmIdle(pxState);
+        break;
+    
+    case FSM_LASERs_INIT:
+        prvFsmLaserSInit(pxState);
+        break;
+    case FSM_LASERs_RUN:
+        prvFsmLaserSRun(pxState);
+        break;
+    case FSM_LASERs_DONE:
+        prvFsmLaserSDone(pxState);
+        break;
+    
+    case FSM_LASERm_INIT:
+        prvFsmLaserMInit(pxState);
+        break;
+    case FSM_LASERm_RUN:
+        prvFsmLaserMRun(pxState);
+        break;
+    case FSM_LASERm_DONE:
+        prvFsmLaserMDone(pxState);
+        break;
+    
+    case FSM_INFRARED_INIT:
+        prvFsmInfraredInit(pxState);
+        break;
+    case FSM_INFRARED_RUN:
+        prvFsmInfraredRun(pxState);
+        break;
+    case FSM_INFRARED_DONE:
+        prvFsmInfraredDone(pxState);
+        break;
+    
+    case FSM_ERROR:
+        prvFsmError(pxState);
+        break;
+    
+    default:
+        /* We should never get here! */
+        break;
+    }
+    
+    pxState->ulCounter++;
+    
+    return;
+}
+
+static void prvFsmStart(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    pxState->xState = FSM_INIT_MPWR;
+    pxState->ulCounter = 0;
+    TRACE("[%6d] Start        -> InitMpwr\n", SYS_TICK_GET());
+}
+
+static void prvFsmInitMpwr(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    if (prvInitChkMPwr()) {
+        pxState->xState = FSM_READY;
+        pxState->ulCounter = 0;
+        TRACE("[%6d] InitMPwr     -> Ready\n", SYS_TICK_GET());
+    }
+}
+
+static void prvFsmReady(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    if (pxState->ulCounter >= FSM_READY_WAIT) {
+        pxState->xState = FSM_IDLE;
+        pxState->ulCounter = 0;
+        TRACE("[%6d] Ready        -> Idle\n", SYS_TICK_GET());
+    }
+}
+
+static void prvFsmIdle(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+}
+
+static void prvFsmLaserSInit(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    if (prvChkMPwr()) {
+        GpioSetOutput(APWR1_EN, s_ucAPwrCtrl1);
+        GpioSetOutput(APWR2_EN, s_ucAPwrCtrl2);
+        GpioSetOutput(APWR3_EN, s_ucAPwrCtrl3);
+        if (s_ucAPwrCtrl1 == APWR_ON) {
+            DacSet(APWR1_CTRL, CUR_TO_DAC(s_ulCurrent / 10.f));
+        }
+        if (s_ucAPwrCtrl2 == APWR_ON) {
+            DacSet(APWR2_CTRL, CUR_TO_DAC(s_ulCurrent / 10.f));
+        }
+        if (s_ucAPwrCtrl3 == APWR_ON) {
+            DacSet(APWR3_CTRL, CUR_TO_DAC(s_ulCurrent / 10.f));
+        }
+        if (pxState->ulCounter >= 1) {
+            pxState->xState = FSM_LASERs_RUN;
+            pxState->ulCounter = 0;
+            th_SysStatus.WORK_LASER = 1;
+            TRACE("[%6d] LaserSInit   -> LaserSRun\n", SYS_TICK_GET());
+            TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl1, DAC_TO_CUR(DacGet(APWR1_CTRL)), DAC_TO_MVOL(DacGet(APWR1_CTRL)));
+            TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl2, DAC_TO_CUR(DacGet(APWR2_CTRL)), DAC_TO_MVOL(DacGet(APWR2_CTRL)));
+            TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl3, DAC_TO_CUR(DacGet(APWR3_CTRL)), DAC_TO_MVOL(DacGet(APWR3_CTRL)));
+        #if 0
+            for (uint8_t n = 0; n < 5; n++) {
+                Status_t r = PwrOutput(1);
+                TRACE("[%6d]     Set MPWR output on, result = %d\n", SYS_TICK_GET(), r);
+                if (r == STATUS_OK) {
+                    break;
+                }
+            }
+        #endif
+        }
+    }
+    else {
+        pxState->xState = FSM_ERROR;
+        pxState->ulCounter = 0;
+        prvEnterFsm();
+        TRACE("[%6d] LaserSInit   -> Error\n", SYS_TICK_GET());
+    }
+}
+
+static void prvFsmLaserSRun(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    if (!prvChkPwr()) {
+        pxState->xState = FSM_ERROR;
+        pxState->ulCounter = 0;
+        th_SysStatus.WORK_LASER = 0;
+        prvEnterFsm();
+        TRACE("[%6d] LaserSRun    -> Error\n", SYS_TICK_GET());
+    }
+}
+
+static void prvFsmLaserSDone(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    pxState->xState = FSM_IDLE;
+    pxState->ulCounter = 0;
+    th_SysStatus.WORK_LASER = 0;
+    TRACE("[%6d] LaserSDone   -> Idle\n", SYS_TICK_GET());
+#if 0
+    for (uint8_t n = 0; n < 5; n++) {
+        Status_t r = PwrOutput(0);
+        TRACE("[%6d]     Set MPWR output on, result = %d\n", SYS_TICK_GET(), r);
+        if (r == STATUS_OK) {
+            break;
+        }
+    }
+#endif
+}
+
+static void prvFsmLaserMInit(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    if (prvChkMPwr()) {
+        GpioSetOutput(APWR1_EN, s_ucAPwrCtrl1);
+        GpioSetOutput(APWR2_EN, s_ucAPwrCtrl2);
+        GpioSetOutput(APWR3_EN, s_ucAPwrCtrl3);
+        if (s_ucAPwrCtrl1 == APWR_ON) {
+            DacSet(APWR1_CTRL, CUR_TO_DAC(s_ulCurrent / 10.f));
+        }
+        if (s_ucAPwrCtrl2 == APWR_ON) {
+            DacSet(APWR2_CTRL, CUR_TO_DAC(s_ulCurrent / 10.f));
+        }
+        if (s_ucAPwrCtrl3 == APWR_ON) {
+            DacSet(APWR3_CTRL, CUR_TO_DAC(s_ulCurrent / 10.f));
+        }
+        if (pxState->ulCounter >= 1) {
+            pxState->xState = FSM_LASERm_RUN;
+            pxState->ulCounter = 0;
+            th_SysStatus.WORK_LASER = 1;
+            TRACE("[%6d] LaserMInit   -> LaserMRun\n", SYS_TICK_GET());
+            TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl1, DAC_TO_CUR(DacGet(APWR1_CTRL)), DAC_TO_MVOL(DacGet(APWR1_CTRL)));
+            TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl2, DAC_TO_CUR(DacGet(APWR2_CTRL)), DAC_TO_MVOL(DacGet(APWR2_CTRL)));
+            TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl3, DAC_TO_CUR(DacGet(APWR3_CTRL)), DAC_TO_MVOL(DacGet(APWR3_CTRL)));
+        #if 0
+            for (uint8_t n = 0; n < 5; n++) {
+                Status_t r = PwrOutput(1);
+                TRACE("[%6d]     Set MPWR output on, result = %d\n", SYS_TICK_GET(), r);
+                if (r == STATUS_OK) {
+                    break;
+                }
+            }
+        #endif
+        }
+    }
+    else {
+        pxState->xState = FSM_ERROR;
+        pxState->ulCounter = 0;
+        prvEnterFsm();
+        TRACE("[%6d] LaserMInit   -> Error\n", SYS_TICK_GET());
+    }
+}
+
+static void prvFsmLaserMRun(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    if (!prvChkPwr()) {
+        pxState->xState = FSM_ERROR;
+        pxState->ulCounter = 0;
+        th_SysStatus.WORK_LASER = 0;
+        prvEnterFsm();
+        TRACE("[%6d] LaserMRun    -> Error\n", SYS_TICK_GET());
+    }
+}
+
+static void prvFsmLaserMDone(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    pxState->xState = FSM_IDLE;
+    pxState->ulCounter = 0;
+    th_SysStatus.WORK_LASER = 0;
+    TRACE("[%6d] LaserMDone   -> Idle\n", SYS_TICK_GET());
+#if 0
+    for (uint8_t n = 0; n < 5; n++) {
+        Status_t r = PwrOutput(0);
+        TRACE("[%6d]     Set MPWR output on, result = %d\n", SYS_TICK_GET(), r);
+        if (r == STATUS_OK) {
+            break;
+        }
+    }
+#endif
+}
+
+static void prvFsmInfraredInit(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    pxState->xState = FSM_INFRARED_RUN;
+    pxState->ulCounter = 0;
+    th_SysStatus.WORK_INFRARED = 1;
+    //GpioSetOutput(LED_CTRL, LED_CTRL_ON);
+    //Set_AimLight_Cur(th_PwmDuty);
+    ToggleAimLight(1);
+    TRACE("[%6d] InfraredInit -> InfraredRun\n", SYS_TICK_GET());
+    TRACE("[%6d]     Set LED_CTRL on\n", SYS_TICK_GET());
+}
+
+static void prvFsmInfraredRun(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    /* Do nothing */
+}
+
+static void prvFsmInfraredDone(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    pxState->xState = FSM_IDLE;
+    pxState->ulCounter = 0;
+    th_SysStatus.WORK_INFRARED = 0;
+    //GpioSetOutput(LED_CTRL, LED_CTRL_OFF);
+    //Set_AimLight_Cur(0);
+    ToggleAimLight(0);
+    TRACE("[%6d] InfraredDone -> Idle\n", SYS_TICK_GET());
+    TRACE("[%6d]     Set LED_CTRL off\n", SYS_TICK_GET());
+}
+
+static void prvFsmError(State_t *pxState)
+{
+    SYS_SAVELASTSTATES();
+    
+    if (prvChkPwr()) {
+        pxState->xState = FSM_IDLE;
+        pxState->ulCounter = 0;
+        TRACE("[%6d] Error        -> Idle\n", SYS_TICK_GET());
+    }
+}
+
+static bool prvInitChkMPwr(void)
+{
+    uint16_t sT1 = !GpioGetInput(MPWR_T_STAT_AC);
+    uint16_t sT2 = GpioGetInput(MPWR_T_STAT_DC);
+    uint16_t sM1 = !GpioGetInput(MPWR_M_STAT_AC);
+    uint16_t sM2 = GpioGetInput(MPWR_M_STAT_DC);
+    uint16_t sB1 = !GpioGetInput(MPWR_B_STAT_AC);
+    uint16_t sB2 = GpioGetInput(MPWR_B_STAT_DC);
+    bool     b  = PwrIsOk();
+    if ((sT1 == MPWR_AC_OK) && (GpioGetOutput(MPWR_T_EN) != MPWR_ON)) {
+        GpioSetOutput(MPWR_T_EN, MPWR_ON);
+        TRACE("[%6d]     Set MPWR_T_EN on\n", SYS_TICK_GET());
+    }
+    if ((sM1 == MPWR_AC_OK) && (GpioGetOutput(MPWR_M_EN) != MPWR_ON)) {
+        GpioSetOutput(MPWR_M_EN, MPWR_ON);
+        TRACE("[%6d]     Set MPWR_M_EN on\n", SYS_TICK_GET());
+    }
+    if ((sB1 == MPWR_AC_OK) && (GpioGetOutput(MPWR_B_EN) != MPWR_ON)) {
+        GpioSetOutput(MPWR_B_EN, MPWR_ON);
+        TRACE("[%6d]     Set MPWR_B_EN on\n", SYS_TICK_GET());
+    }
+    /* Test 版本支持单电源DC_OK开激光 */
+#if PWR_50KW_TEST
+    return (((sT1 == MPWR_AC_OK) || (sM1 == MPWR_AC_OK) || (sB1 == MPWR_AC_OK)) && (sM2 == MPWR_DC_OK) && b) ? true : false;
+#else
+    return ((sT1 == MPWR_AC_OK)&&(sM1 == MPWR_AC_OK)&&(sB1 == MPWR_AC_OK) && (sM2 == MPWR_DC_OK) && b) ? true : false;
+#endif
+}
+
+static bool prvChkPwr(void)
+{
+    return (prvChkMPwr() && prvChkAPwr());
+}
+
+static bool prvChkMPwr(void)
+{
+    int32_t vT = PwrDataGet(PWR_T_ADDR, PWR_OUTPUT_VOL);
+    int32_t vM = PwrDataGet(PWR_M_ADDR, PWR_OUTPUT_VOL);
+    int32_t vB = PwrDataGet(PWR_B_ADDR, PWR_OUTPUT_VOL);
+    
+    uint16_t sT1 = GpioGetInput(MPWR_T_STAT_AC);
+    uint16_t sT2 = GpioGetInput(MPWR_T_STAT_DC);
+    uint16_t sM1 = GpioGetInput(MPWR_M_STAT_AC);
+    uint16_t sM2 = GpioGetInput(MPWR_M_STAT_DC);
+    uint16_t sB1 = GpioGetInput(MPWR_B_STAT_AC);
+    uint16_t sB2 = GpioGetInput(MPWR_B_STAT_DC);
+    
+#if PWR_50KW_TEST
+    return (((vT >= 650/*0.1V*/) && (sT1 == MPWR_AC_OK) && (sT2 == MPWR_DC_OK)) || 
+            ((vM >= 650/*0.1V*/) && (sM1 == MPWR_AC_OK) && (sM2 == MPWR_DC_OK)) || 
+            ((vB >= 650/*0.1V*/) && (sB1 == MPWR_AC_OK) && (sB2 == MPWR_DC_OK))) ? true : false;
+#else
+    return (((vT >= 650/*0.1V*/) && (sT1 == MPWR_AC_OK) && (sT2 == MPWR_DC_OK)) && 
+            ((vM >= 650/*0.1V*/) && (sM1 == MPWR_AC_OK) && (sM2 == MPWR_DC_OK)) && 
+            ((vB >= 650/*0.1V*/) && (sB1 == MPWR_AC_OK) && (sB2 == MPWR_DC_OK))) ? true : false;
+#endif
+}
+
+static bool prvChkAPwr(void)
+{
+    if (s_xState.xState != FSM_ERROR) {
+        uint16_t s1 = GpioGetInput(APWR1_STAT);
+        uint16_t s2 = GpioGetInput(APWR2_STAT);
+        uint16_t s3 = GpioGetInput(APWR3_STAT);
+        if (((s_ucAPwrCtrl1 == APWR_ON) && (s1 != APWR_OK)) || ((s_ucAPwrCtrl2 == APWR_ON) && (s2 != APWR_OK)) || (((s_ucAPwrCtrl3 == APWR_ON)) && (s3 != APWR_OK))) {
+            TRACE("[%6d]     APWRn_STAT error\n", SYS_TICK_GET());
+            return false;
+        }
+    }
+    
+    /* 温度组1检测 */
+    int16_t sTemp1 = StcGetTempHFrom(0, th_TempNum - 1);
+    if (th_ModEn.TEMP1) {
+        if (sTemp1 <= th_OtCutTh) {
+            /* 切断温度 */
+            TRACE("[%6d]     Group1 over cut temperature\n", SYS_TICK_GET());
+            return false;
+        }
+        else if (sTemp1 <= th_OtWarnTh) {
+            /* 告警温度 */
+            /* TRACE("[%6d]     Group 1 over warning temperature\n", SYS_TICK_GET()); */
+        }
+    }
+    
+    /* 温度组2检测 */
+    int16_t sTemp2 = StcGetTempHFrom(th_TempNum, 24 - 1);
+    if (th_ModEn.TEMP2) {
+        if (sTemp2 <= th_OtCutTh) {
+            /* 切断温度 */
+            TRACE("[%6d]     Group2 over cut temperature\n", SYS_TICK_GET());
+            return false;
+        }
+        else if (sTemp2 <= th_OtWarnTh) {
+            /* 告警温度 */
+            /* TRACE("[%6d]     Group2 over warning temperature\n", SYS_TICK_GET()); */
+        }
+    }
+    
+    /* PD漏光检测 */
+    uint16_t usPd = StcGetPdHFrom();
+    if (th_ModEn.PD && ((usPd >= th_PdWarnL1))) {
+        TRACE("[%6d]     PD_VS is over threshold\n", SYS_TICK_GET());
+        return false;
+    }
+    
+    /* QBH旋钮到位检测 */
+    if (th_ModEn.QBH && (QBH_ON_OFF == GpioGetInput(QBH_ON))) {
+        TRACE("[%6d]     QBH_ON is off\n", SYS_TICK_GET());
+        return false;
+    }
+    
+    /* 水冷机检测 */
+    if (th_ModEn.WATER_CHILLER && (WATER_CHILLER_OFF == GpioGetInput(WATER_CHILLER))) {
+        TRACE("[%6d]     WATER_CHILLER is off\n", SYS_TICK_GET());
+        return false;
+    }
+    
+    /* 水压检测 */
+    if (th_ModEn.WATER_PRESS && (WATER_PRESS_OFF == GpioGetInput(WATER_PRESS))) {
+        TRACE("[%6d]     WATER_PRESS is off\n", SYS_TICK_GET());
+        return false;
+    }
+#if 0
+    /* PD漏光检测 */
+    uint16_t usPd = AdcGet(PD_VS);
+    if (th_ModEn.PD && ((usPd >= th_PdWarnL1))) {
+        TRACE("[%6d]     PD_VS is over threshold\n", SYS_TICK_GET());
+        return false;
+    }
+#endif   
+    /* 通道1电流检测 */
+    uint16_t usChan1Cur = AdcGet(APWR1_CUR);
+    if (th_ModEn.CHAN1_CUR && (usChan1Cur > th_MaxCurAd)) {
+        TRACE("[%6d]     APWR1_CUR is over threshold\n", SYS_TICK_GET());
+        return false;
+    }
+    
+    /* 通道2电流检测 */
+    uint16_t usChan2Cur = AdcGet(APWR2_CUR);
+    if (th_ModEn.CHAN2_CUR && (usChan2Cur > th_MaxCurAd)) {
+        TRACE("[%6d]     APWR2_CUR is over threshold\n", SYS_TICK_GET());
+        return false;
+    }
+    
+    /* 通道3电流检测 */
+    uint16_t usChan3Cur = AdcGet(APWR3_CUR);
+    if (th_ModEn.CHAN3_CUR && (usChan3Cur > th_MaxCurAd)) {
+        TRACE("[%6d]     APWR3_CUR is over threshold\n", SYS_TICK_GET());
+        return false;
+    }
+    return true;
+}
+
+static void prvEnterFsm(void)
+{
+    TRACE("[%6d]     Set APWRx_EN off\n", SYS_TICK_GET());
+    GpioSetOutput(APWR1_EN, APWR_OFF);
+    GpioSetOutput(APWR2_EN, APWR_OFF);
+    GpioSetOutput(APWR3_EN, APWR_OFF);
+}
+
+static Status_t prvChkEnviroment(void)
+{
+    uint8_t s_MPWR_T_STAT_AC   = GpioGetInput(MPWR_T_STAT_AC);
+    uint8_t s_MPWR_T_STAT_DC   = GpioGetInput(MPWR_T_STAT_DC);
+    uint8_t s_MPWR_M_STAT_AC   = GpioGetInput(MPWR_M_STAT_AC);
+    uint8_t s_MPWR_M_STAT_DC   = GpioGetInput(MPWR_M_STAT_DC);
+    uint8_t s_MPWR_B_STAT_AC   = GpioGetInput(MPWR_B_STAT_AC);
+    uint8_t s_MPWR_B_STAT_DC   = GpioGetInput(MPWR_B_STAT_DC);
+    uint8_t s_APWR1_STAT       = GpioGetInput(APWR1_STAT);
+    uint8_t s_APWR2_STAT       = GpioGetInput(APWR2_STAT);
+    uint8_t s_APWR3_STAT       = GpioGetInput(APWR3_STAT);
+    uint8_t s_QBH_ON           = GpioGetInput(QBH_ON);
+    uint8_t s_WATER_PRESS      = GpioGetInput(WATER_PRESS);
+    uint8_t s_WATER_CHILLER    = GpioGetInput(WATER_CHILLER);
+    int16_t s_MAX_TEMP1        = StcGetTempHFrom(0, th_TempNum - 1);
+    int16_t s_MAX_TEMP2        = StcGetTempHFrom(th_TempNum, 10 - 1);
+    int32_t s_PWR_T_OUTPUT_VOL = PwrDataGet(PWR_T_ADDR, PWR_OUTPUT_VOL);
+    int32_t s_PWR_M_OUTPUT_VOL = PwrDataGet(PWR_M_ADDR, PWR_OUTPUT_VOL);
+    int32_t s_PWR_B_OUTPUT_VOL = PwrDataGet(PWR_B_ADDR, PWR_OUTPUT_VOL);
+    uint16_t s_PD              = AdcGet(PD_VS);
+    uint16_t s_CHAN1_CUR       = AdcGet(APWR1_CUR);
+    uint16_t s_CHAN2_CUR       = AdcGet(APWR2_CUR);
+    uint16_t s_CHAN3_CUR       = AdcGet(APWR3_CUR);
+    
+    /* Check enviroment */
+    /* G: PWR_OUTPUT_VOL >= 65V */
+    /* R: PWR_OUTPUT_VOL <  65V */
+    static uint8_t s1 = 0xFF;
+#if PWR_50KW_TEST
+    if ((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) || (s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) || (s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/)) {
+#else
+    if ((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) && (s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) && (s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/)) {
+#endif
+        if (s1 != 1) {
+            GpioSetOutput(LED_POWER_G, LED_ON);
+            GpioSetOutput(LED_POWER_R, LED_OFF);
+            s1 = 1;
+        }
+    }
+    else {
+        if (s1 != 0) {
+            GpioSetOutput(LED_POWER_G, LED_OFF);
+            GpioSetOutput(LED_POWER_R, LED_ON);
+            s1 = 0;
+        }
+    }
+    
+     /* Alarm */
+    uint8_t s3 = 0xFF;
+    /* R: QBH_ON 1 */
+    /* R: WATER_PRESS 1 */
+    /* R: WATER_CHILLER 1 */
+    /* R: Max temperature > over temperature cut threshold */
+    /* R: Channel current > maximum current */
+    /* R: TODO: MPWR CAN */
+    /* R: PD */
+    if ((th_ModEn.QBH           && (s_QBH_ON == QBH_ON_OFF))               || 
+        (th_ModEn.WATER_PRESS   && (s_WATER_PRESS == WATER_PRESS_OFF))     || 
+        (th_ModEn.WATER_CHILLER && (s_WATER_CHILLER == WATER_CHILLER_OFF)) || 
+        (th_ModEn.TEMP1         && (s_MAX_TEMP1 <= th_OtCutTh))            || 
+        (th_ModEn.TEMP2         && (s_MAX_TEMP2 <= th_OtCutTh))            || 
+        (th_ModEn.CHAN1_CUR     && (s_CHAN1_CUR > th_MaxCurAd))            || 
+        (th_ModEn.CHAN2_CUR     && (s_CHAN2_CUR > th_MaxCurAd))            || 
+        (th_ModEn.CHAN3_CUR     && (s_CHAN3_CUR > th_MaxCurAd))            || 
+        (th_ModEn.PD            && (s_PD >= th_PdWarnL1))) {
+        if (s3 != 0) {
+//            GpioSetOutput(LED_ALARM_R, LED_ON);
+//            GpioSetOutput(LED_ALARM_G, LED_OFF);
+            /* Turn off the MOD switch here. */
+            return STATUS_ERR;
+            s3 = 0;
+        }
+    }
+    /* Y: Max temperature > over temperature warn threshold */
+    /* Y: PD */
+    /* Y: TODO: CAN */
+    else if ((th_ModEn.TEMP1         && (s_MAX_TEMP1 <= th_OtWarnTh))      || 
+             (th_ModEn.TEMP2         && (s_MAX_TEMP2 <= th_OtWarnTh))      || 
+             (th_ModEn.PD            && (s_PD >= th_PdWarnL1))) {
+        if (s3 != 1) {
+//            GpioSetOutput(LED_ALARM_R, LED_ON);
+//            GpioSetOutput(LED_ALARM_G, LED_ON);
+            /* Turn on the MOD */
+            return STATUS_OK;
+            s3 = 1;
+        }
+    }
+    /* G: Otherwise */
+    else {
+        if (s3 != 2) {
+//            GpioSetOutput(LED_ALARM_R, LED_OFF);
+//            GpioSetOutput(LED_ALARM_G, LED_ON);
+            /* Turn on the MOD */
+            return STATUS_OK;
+            s3 = 2;
+        }
+    }
+    return STATUS_OK;
+}
+
+static void prvProcManualCtrl(void)
+{
+    static uint8_t on = 0;
+    static uint8_t off = 0;
+
+    if (!s_bManualCtrl || !th_ModEn.MANUAL) {
+        return;
+    }
+    
+    if (GpioGetInput(EX_CTRL_EN) == 0) {
+        on++;
+        if (on >= 3) {
+            on = 3;
+        }
+    }
+    else {
+        on = 0;
+    }
+    
+    if (GpioGetInput(EX_CTRL_EN) == 1) {
+        off++;
+        if (off >= 3) {
+            off = 3;
+        }
+    }
+    else {
+        off = 0;
+    }
+    
+    Status_t Chk = prvChkEnviroment();
+    if (Chk == STATUS_ERR){
+        /* Turn off the MOD here. */
+    }
+    else
+    {
+        /* Turn on the MOD here. */
+        
+    }
+    
+    /* Manual control: on */
+    if ((on == 3) && (Chk == STATUS_ERR)) {
+        /* Turn off the MOD here. */
+    }
+    else if (on == 3)
+    {
+        /* Turn on the MOD here. */
+        
+    }
+    
+    /* Manual control: off */
+    if (off == 3) {
+        /* Turn off the MOD here. */
+        
+    }
+    
+    
+}
+
+#if 0
+static void prvProcManualCtrl(void)
+{
+    static uint8_t on = 0;
+    static uint8_t off = 0;
+    
+    if (!s_bManualCtrl || !th_ModEn.MANUAL) {
+        return;
+    }
+    
+    if (GpioGetInput(EX_CTRL_EN) == 0) {
+        on++;
+        if (on >= 3) {
+            on = 3;
+        }
+    }
+    else {
+        on = 0;
+    }
+    
+    if (GpioGetInput(EX_CTRL_EN) == 1) {
+        off++;
+        if (off >= 3) {
+            off = 3;
+        }
+    }
+    else {
+        off = 0;
+    }
+    
+    /* Manual control: on */
+    if (on == 3) {
+        State_t *pxState = &s_xState;
+        if ((pxState->xState == FSM_IDLE) && prvChkMPwr()) {
+            s_ucAPwrCtrl1 = APWR_ON;
+            s_ucAPwrCtrl2 = APWR_ON;
+            s_ucAPwrCtrl3 = APWR_ON;
+            s_ulCurrent = th_WorkCur * (1000 + th_CompRate) / 1000;
+            pxState->xState = FSM_LASERm_INIT;
+            pxState->ulCounter = 0;
+            TRACE("[%6d] Idle         -> LaserMInit\n", SYS_TICK_GET());
+            TRACE("[%6d]     Cur %.1f\n", SYS_TICK_GET(), s_ulCurrent / 10.);
+            TRACE("[%6d]     Sel 7\n", SYS_TICK_GET());
+        }
+    }
+    
+    /* Manual control: off */
+    if (off == 3) {
+        State_t *pxState = &s_xState;
+        if ((pxState->xState == FSM_LASERm_RUN)) {
+            s_ucAPwrCtrl1 = APWR_OFF;
+            s_ucAPwrCtrl2 = APWR_OFF;
+            s_ucAPwrCtrl3 = APWR_OFF;
+            pxState->xState = FSM_LASERs_DONE;
+            pxState->ulCounter = 0;
+            TRACE("[%6d] LaserMRun    -> LaserMDone\n", SYS_TICK_GET());
+            GpioSetOutput(APWR1_EN, s_ucAPwrCtrl1);
+            GpioSetOutput(APWR2_EN, s_ucAPwrCtrl2);
+            GpioSetOutput(APWR3_EN, s_ucAPwrCtrl3);
+            if (s_ucAPwrCtrl1 == APWR_OFF) {
+                DacSet(APWR1_CTRL, CUR_TO_DAC(0));
+            }
+            if (s_ucAPwrCtrl2 == APWR_OFF) {
+                DacSet(APWR2_CTRL, CUR_TO_DAC(0));
+            }
+            if (s_ucAPwrCtrl3 == APWR_OFF) {
+                DacSet(APWR3_CTRL, CUR_TO_DAC(0));
+            }
+            TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl1, DAC_TO_CUR(DacGet(APWR1_CTRL)), DAC_TO_MVOL(DacGet(APWR1_CTRL)));
+            TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl2, DAC_TO_CUR(DacGet(APWR2_CTRL)), DAC_TO_MVOL(DacGet(APWR2_CTRL)));
+            TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl3, DAC_TO_CUR(DacGet(APWR3_CTRL)), DAC_TO_MVOL(DacGet(APWR3_CTRL)));
+        }
+    }
+}
+#endif
+
+static void prvProcPanelLed(void)
+{
+    uint8_t s_MPWR_T_STAT_AC   = GpioGetInput(MPWR_T_STAT_AC);
+    uint8_t s_MPWR_T_STAT_DC   = GpioGetInput(MPWR_T_STAT_DC);
+    uint8_t s_MPWR_M_STAT_AC   = GpioGetInput(MPWR_M_STAT_AC);
+    uint8_t s_MPWR_M_STAT_DC   = GpioGetInput(MPWR_M_STAT_DC);
+    uint8_t s_MPWR_B_STAT_AC   = GpioGetInput(MPWR_B_STAT_AC);
+    uint8_t s_MPWR_B_STAT_DC   = GpioGetInput(MPWR_B_STAT_DC);
+    uint8_t s_APWR1_STAT       = GpioGetInput(APWR1_STAT);
+    uint8_t s_APWR2_STAT       = GpioGetInput(APWR2_STAT);
+    uint8_t s_APWR3_STAT       = GpioGetInput(APWR3_STAT);
+    uint8_t s_QBH_ON           = GpioGetInput(QBH_ON);
+    uint8_t s_WATER_PRESS      = GpioGetInput(WATER_PRESS);
+    uint8_t s_WATER_CHILLER    = GpioGetInput(WATER_CHILLER);
+    int16_t s_MAX_TEMP1        = StcGetTempHFrom(0, th_TempNum - 1);
+    int16_t s_MAX_TEMP2        = StcGetTempHFrom(th_TempNum, 10 - 1);
+    int32_t s_PWR_T_OUTPUT_VOL = PwrDataGet(PWR_T_ADDR, PWR_OUTPUT_VOL);
+    int32_t s_PWR_M_OUTPUT_VOL = PwrDataGet(PWR_M_ADDR, PWR_OUTPUT_VOL);
+    int32_t s_PWR_B_OUTPUT_VOL = PwrDataGet(PWR_B_ADDR, PWR_OUTPUT_VOL);
+    uint16_t s_PD              = AdcGet(PD_VS);
+    uint16_t s_CHAN1_CUR       = AdcGet(APWR1_CUR);
+    uint16_t s_CHAN2_CUR       = AdcGet(APWR2_CUR);
+    uint16_t s_CHAN3_CUR       = AdcGet(APWR3_CUR);
+    
+    /* Power */
+#if 0   /* G: MCU_DC_OK 1 */
+    /* R: MCU_DC_OK 0 */
+    static uint8_t s1 = 0xFF;
+    if (s1 != s_MPWR_STAT_DC) {
+        if (s_MPWR_STAT_DC == MPWR_DC_OK) {
+            GpioSetOutput(LED_POWER_G, LED_ON);
+            GpioSetOutput(LED_POWER_R, LED_OFF);
+        }
+        else {
+            GpioSetOutput(LED_POWER_G, LED_OFF);
+            GpioSetOutput(LED_POWER_R, LED_ON);
+        }
+        s1 = s_MPWR_STAT_DC;
+    }
+#else
+    /* G: PWR_OUTPUT_VOL >= 65V */
+    /* R: PWR_OUTPUT_VOL <  65V */
+    static uint8_t s1 = 0xFF;
+#if PWR_50KW_TEST
+    if ((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) || (s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) || (s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/)) {
+#else
+    if ((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) && (s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) && (s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/)) {
+#endif
+        if (s1 != 1) {
+            GpioSetOutput(LED_POWER_G, LED_ON);
+            GpioSetOutput(LED_POWER_R, LED_OFF);
+            s1 = 1;
+        }
+    }
+    else {
+        if (s1 != 0) {
+            GpioSetOutput(LED_POWER_G, LED_OFF);
+            GpioSetOutput(LED_POWER_R, LED_ON);
+            s1 = 0;
+        }
+    }
+#endif
+    
+    /* Active */
+    /* G: ((APWR1_EN && APWR1_CUR) || (APWR2_EN && APWR2_CUR) || (APWR3_EN && APWR3_CUR)) */
+    /* R: !G */
+    static uint8_t s2 = 0xFF;
+    uint16_t usApwr1Cur = AdcGet(APWR1_CUR);
+    uint16_t usApwr2Cur = AdcGet(APWR2_CUR);
+    uint16_t usApwr3Cur = AdcGet(APWR3_CUR);
+    if (((s_ucAPwrCtrl1 == APWR_ON) && (usApwr1Cur > 124/*2A*/)) || \
+        ((s_ucAPwrCtrl2 == APWR_ON) && (usApwr2Cur > 124/*2A*/)) || \
+        ((s_ucAPwrCtrl3 == APWR_ON) && (usApwr3Cur > 124/*2A*/))) {
+        if (s2 != 1) {
+            GpioSetOutput(LED_ACTIVE_G, LED_ON);
+            GpioSetOutput(LED_ACTIVE_R, LED_OFF);
+            th_SysStatus.RUN = 1;
+            s2 = 1;
+        }
+    }
+    else {
+        if (s2 != 0) {
+            GpioSetOutput(LED_ACTIVE_G, LED_OFF);
+            GpioSetOutput(LED_ACTIVE_R, LED_ON);
+            th_SysStatus.RUN = 0;
+            s2 = 0;
+        }
+    }
+    
+    /* Alarm */
+    uint8_t s3 = 0xFF;
+    /* R: QBH_ON 1 */
+    /* R: WATER_PRESS 1 */
+    /* R: WATER_CHILLER 1 */
+    /* R: Max temperature > over temperature cut threshold */
+    /* R: Channel current > maximum current */
+    /* R: TODO: MPWR CAN */
+    /* R: PD */
+    if ((th_ModEn.QBH           && (s_QBH_ON == QBH_ON_OFF))               || 
+        (th_ModEn.WATER_PRESS   && (s_WATER_PRESS == WATER_PRESS_OFF))     || 
+        (th_ModEn.WATER_CHILLER && (s_WATER_CHILLER == WATER_CHILLER_OFF)) || 
+        (th_ModEn.TEMP1         && (s_MAX_TEMP1 <= th_OtCutTh))            || 
+        (th_ModEn.TEMP2         && (s_MAX_TEMP2 <= th_OtCutTh))            || 
+        (th_ModEn.CHAN1_CUR     && (s_CHAN1_CUR > th_MaxCurAd))            || 
+        (th_ModEn.CHAN2_CUR     && (s_CHAN2_CUR > th_MaxCurAd))            || 
+        (th_ModEn.CHAN3_CUR     && (s_CHAN3_CUR > th_MaxCurAd))            || 
+        (th_ModEn.PD            && (s_PD >= th_PdWarnL1))) {
+        if (s3 != 0) {
+            GpioSetOutput(LED_ALARM_R, LED_ON);
+            GpioSetOutput(LED_ALARM_G, LED_OFF);
+            s3 = 0;
+        }
+    }
+    /* Y: Max temperature > over temperature warn threshold */
+    /* Y: PD */
+    /* Y: TODO: CAN */
+    else if ((th_ModEn.TEMP1         && (s_MAX_TEMP1 <= th_OtWarnTh))      || 
+             (th_ModEn.TEMP2         && (s_MAX_TEMP2 <= th_OtWarnTh))      || 
+             (th_ModEn.PD            && (s_PD >= th_PdWarnL1))) {
+        if (s3 != 1) {
+            GpioSetOutput(LED_ALARM_R, LED_ON);
+            GpioSetOutput(LED_ALARM_G, LED_ON);
+            s3 = 1;
+        }
+    }
+    /* G: Otherwise */
+    else {
+        if (s3 != 2) {
+            GpioSetOutput(LED_ALARM_R, LED_OFF);
+            GpioSetOutput(LED_ALARM_G, LED_ON);
+            s3 = 2;
+        }
+    }
+    
+    /* System status update */
+    /* Main power */
+#if PWR_50KW_TEST
+    if (((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_T_STAT_AC == MPWR_AC_OK) && (s_MPWR_T_STAT_DC == MPWR_DC_OK)) || 
+        ((s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_M_STAT_AC == MPWR_AC_OK) && (s_MPWR_M_STAT_DC == MPWR_DC_OK)) ||
+        ((s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_B_STAT_AC == MPWR_AC_OK) && (s_MPWR_B_STAT_DC == MPWR_DC_OK))) {
+        th_SysStatus.STATUS_MPWR = 1;
+    }
+#else
+    if (((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_T_STAT_AC == MPWR_AC_OK) && (s_MPWR_T_STAT_DC == MPWR_DC_OK)) && 
+        ((s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_M_STAT_AC == MPWR_AC_OK) && (s_MPWR_M_STAT_DC == MPWR_DC_OK)) &&
+        ((s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_B_STAT_AC == MPWR_AC_OK) && (s_MPWR_B_STAT_DC == MPWR_DC_OK))) {
+        th_SysStatus.STATUS_MPWR = 1;
+    }
+#endif
+    
+    else {
+        th_SysStatus.STATUS_MPWR = 0;
+    }
+    /* Emergent stop */
+    static uint8_t s_last_MPWR_STAT_AC = 0;
+    if ((s_last_MPWR_STAT_AC == 0) && (s_MPWR_M_STAT_AC == 1)) {
+        th_SysStatus.ALARM_EMCY_STOP = 0;
+    }
+    if ((s_last_MPWR_STAT_AC == 1) && (s_MPWR_M_STAT_AC == 0)) {
+        th_SysStatus.ALARM_EMCY_STOP = 1;
+    }
+    s_last_MPWR_STAT_AC = s_MPWR_M_STAT_AC;
+    
+    
+    /* Water chiller */
+    if (th_ModEn.WATER_CHILLER && (s_WATER_CHILLER == WATER_CHILLER_OFF)) {
+        th_SysStatus.ALARM_WATER_CHILLER = 1;
+    }
+    else {
+        th_SysStatus.ALARM_WATER_CHILLER = 0;
+    }
+    /* Water press */
+    if (th_ModEn.WATER_PRESS && (s_WATER_PRESS == WATER_PRESS_OFF)) {
+        th_SysStatus.ALARM_WATER_PRESS = 1;
+    }
+    else {
+        th_SysStatus.ALARM_WATER_PRESS = 0;
+    }
+    /* QBH */
+    if (th_ModEn.QBH && (s_QBH_ON == QBH_ON_OFF)) {
+        th_SysStatus.ALARM_QBH = 1;
+    }
+    else {
+        th_SysStatus.ALARM_QBH = 0;
+    }
+    /* OT */
+    if ((th_ModEn.TEMP1 && (s_MAX_TEMP1 <= th_OtCutTh)) || (th_ModEn.TEMP2 && (s_MAX_TEMP2 <= th_OtCutTh))) {
+        th_SysStatus.ALARM_OT = 1;
+        th_SysStatus.WARN_OT  = 0;
+    }
+    else if ((th_ModEn.TEMP1 && (s_MAX_TEMP1 <= th_OtWarnTh)) ||  (th_ModEn.TEMP2 && (s_MAX_TEMP2 <= th_OtWarnTh))) {
+        th_SysStatus.ALARM_OT = 0;
+        th_SysStatus.WARN_OT  = 1;
+    }
+    else {
+        th_SysStatus.ALARM_OT = 0;
+        th_SysStatus.WARN_OT  = 0;
+    }
+    /* PD */
+    if (th_ModEn.PD && (s_PD >= th_PdWarnL1)) {
+        th_SysStatus.ALARM_PD = 1;
+        th_SysStatus.WARN_PD  = 0;
+    }
+    else if (th_ModEn.PD && (s_PD >= th_PdWarnL2)) {
+        th_SysStatus.ALARM_PD = 0;
+        th_SysStatus.WARN_PD  = 1;
+    }
+    else {
+        th_SysStatus.ALARM_PD = 0;
+        th_SysStatus.WARN_PD  = 0;
+    }
+}
+
+static void prvChkCtrl(void)
+{
+    /* Control switch on or off. */
+    
+    
+}
+
+static void prvCliCmdSysFsm(cli_printf cliprintf, int argc, char** argv)
+{
+    CHECK_CLI();
+    
+    if (argc != 2) {
+        cliprintf("sys_fsm ON_OFF\n");
+        return;
+    }
+    
+    int lOnOff = atoi(argv[1]);
+    lOnOff ? (s_bProc = true) : (s_bProc = false);
+}
+CLI_CMD_EXPORT(sys_fsm, start or stop system fsm process, prvCliCmdSysFsm)
+
+static void prvCliCmdEnableManualCtrl(cli_printf cliprintf, int argc, char** argv)
+{
+    CHECK_CLI();
+    
+    if (argc != 2) {
+        cliprintf("enable_manual_ctrl ON_OFF\n");
+        return;
+    }
+    
+    int lOnOff = atoi(argv[1]);
+    lOnOff ? (s_bManualCtrl = true) : (s_bManualCtrl = false);
+}
+CLI_CMD_EXPORT(enable_manual_ctrl, enable manual ctrl, prvCliCmdEnableManualCtrl)
+
+static void prvCliCmdShowSysStatus(cli_printf cliprintf, int argc, char** argv)
+{
+    CHECK_CLI();
+
+    cliprintf("STATUS_MPWR        : %d\n", th_SysStatus.STATUS_MPWR);
+    cliprintf("ALARM_EMCY_STOP    : %d\n", th_SysStatus.ALARM_EMCY_STOP);
+    cliprintf("ALARM_WATER_CHILLER: %d\n", th_SysStatus.ALARM_WATER_CHILLER);
+    cliprintf("ALARM_WATER_PRESS  : %d\n", th_SysStatus.ALARM_WATER_PRESS);
+    cliprintf("ALARM_QBH          : %d\n", th_SysStatus.ALARM_QBH);
+    cliprintf("ALARM_OT           : %d\n", th_SysStatus.ALARM_OT);
+    cliprintf("WARN_OT            : %d\n", th_SysStatus.WARN_OT);
+    cliprintf("ALARM_PD           : %d\n", th_SysStatus.ALARM_PD);
+    cliprintf("WARN_PD            : %d\n", th_SysStatus.WARN_PD);
+    cliprintf("ALARM_WET          : %d\n", th_SysStatus.ALARM_WET);
+    cliprintf("WORK_INFRARED      : %d\n", th_SysStatus.WORK_INFRARED);
+    cliprintf("WORK_LASER         : %d\n", th_SysStatus.WORK_LASER);
+    cliprintf("RUN                : %d\n", th_SysStatus.RUN);
+}
+CLI_CMD_EXPORT(show_sys_status, show system status, prvCliCmdShowSysStatus)
+
+
