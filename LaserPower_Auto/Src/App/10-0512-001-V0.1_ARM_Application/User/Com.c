@@ -160,8 +160,8 @@ typedef struct {
     struct {
         uint16_t _MPWR_T_STAT_AC:1;
         uint16_t _MPWR_T_STAT_DC:1;
-        uint16_t _MPWR_M_STAT_AC:1;
-        uint16_t _MPWR_M_STAT_DC:1;
+        uint16_t _MPWR1_STAT_AC:1;
+        uint16_t _MPWR1_STAT_DC:1;
         uint16_t _MPWR_B_STAT_AC:1;
         uint16_t _MPWR_B_STAT_DC:1;
         
@@ -175,7 +175,7 @@ typedef struct {
     }xDi;
     struct {
         uint16_t _MPWR_T_EN:1;
-        uint16_t _MPWR_M_EN:1;
+        uint16_t _MPWR1_EN:1;
         uint16_t _MPWR_B_EN:1;
         
         uint16_t _APWR1_EN:1;
@@ -732,8 +732,8 @@ static void prvSendStatusInfo(void *pvInfo)
     
     pxData->xDi._MPWR_T_STAT_AC  = GpioGetInput(MPWR_T_STAT_AC);
     pxData->xDi._MPWR_T_STAT_DC  = GpioGetInput(MPWR_T_STAT_DC);
-    pxData->xDi._MPWR_M_STAT_AC  = GpioGetInput(MPWR_M_STAT_AC);
-    pxData->xDi._MPWR_M_STAT_DC  = GpioGetInput(MPWR_M_STAT_DC);
+    pxData->xDi._MPWR1_STAT_AC  = GpioGetInput(MPWR1_STAT_AC);
+    pxData->xDi._MPWR1_STAT_DC  = GpioGetInput(MPWR1_STAT_DC);
     pxData->xDi._MPWR_B_STAT_AC  = GpioGetInput(MPWR_B_STAT_AC);
     pxData->xDi._MPWR_B_STAT_DC  = GpioGetInput(MPWR_B_STAT_DC);
     
@@ -746,7 +746,7 @@ static void prvSendStatusInfo(void *pvInfo)
     pxData->xDi._WATER_CHILLER   = GpioGetInput(WATER_CHILLER);
 
     pxData->xDo._MPWR_T_EN       = GpioGetOutput(MPWR_T_EN);
-    pxData->xDo._MPWR_M_EN       = GpioGetOutput(MPWR_M_EN);
+    pxData->xDo._MPWR1_EN       = GpioGetOutput(MPWR1_EN);
     pxData->xDo._MPWR_B_EN       = GpioGetOutput(MPWR_B_EN);
     
     pxData->xDo._APWR1_EN        = GpioGetOutput(APWR1_EN);
@@ -785,9 +785,9 @@ static void prvSendStatusInfo(void *pvInfo)
     pxData->usAdc[2]             = (pxData->usAdc[2] >= 3200) ? 0 : pxData->usAdc[2];
     pxData->usAdc[4]             = (pxData->usAdc[4] >= 3200) ? 0 : pxData->usAdc[4];
     
-    pxData->usTMPwrVol           = PwrDataGet(PWR_T_ADDR, PWR_OUTPUT_VOL);
-    pxData->usMMPwrVol           = PwrDataGet(PWR_M_ADDR, PWR_OUTPUT_VOL);
-    pxData->usBMPwrVol           = PwrDataGet(PWR_B_ADDR, PWR_OUTPUT_VOL);
+    pxData->usTMPwrVol           = PwrDataGet(PWR2_M2_ADDR, PWR_OUTPUT_VOL);
+    pxData->usMMPwrVol           = PwrDataGet(PWR2_M1_ADDR, PWR_OUTPUT_VOL);
+    pxData->usBMPwrVol           = PwrDataGet(PWR2_M3_ADDR, PWR_OUTPUT_VOL);
     
     pxData->usTemp[0][0]         = StcGetTemp(STC_DEV_1, STC_TEMP_NODE_1);
     pxData->usTemp[0][1]         = StcGetTemp(STC_DEV_1, STC_TEMP_NODE_2);
@@ -834,9 +834,9 @@ static void prvSendStatusInfo(void *pvInfo)
 
     pxData->usSysStatus          = th_SysStatusAll;
     
-    pxData->ulTPwrStatus         = PwrDataGet(PWR_T_ADDR, PWR_STATUS);
-    pxData->ulMPwrStatus         = PwrDataGet(PWR_M_ADDR, PWR_STATUS);
-    pxData->ulBPwrStatus         = PwrDataGet(PWR_B_ADDR, PWR_STATUS);
+    pxData->ulTPwrStatus         = PwrDataGet(PWR2_M2_ADDR, PWR_STATUS);
+    pxData->ulMPwrStatus         = PwrDataGet(PWR2_M1_ADDR, PWR_STATUS);
+    pxData->ulBPwrStatus         = PwrDataGet(PWR2_M3_ADDR, PWR_STATUS);
     
     pxData->usSwInfo             = th_SwInfo;
     
@@ -1137,8 +1137,8 @@ typedef struct {
 typedef struct {
     uint8_t  ucFsm;
     struct {
-        uint16_t _MPWR_STAT_AC:1;
-        uint16_t _MPWR_STAT_DC:1;
+        uint16_t _MPWR1_STAT_AC:1;
+        uint16_t _MPWR1_STAT_DC:1;
         uint16_t _APWR1_STAT:1;
         uint16_t _APWR2_STAT:1;
         uint16_t _APWR3_STAT:1;
@@ -1148,7 +1148,7 @@ typedef struct {
         uint16_t _WATER_CHILLER:1;
     }xDi;
     struct {
-        uint16_t _MPWR_EN:1;
+        uint16_t _MPWR1_EN:1;
         uint16_t _APWR1_EN:1;
         uint16_t _APWR2_EN:1;
         uint16_t _APWR3_EN:1;
@@ -1701,8 +1701,8 @@ static void prvSendStatusInfo(void *pvInfo)
     
     pxData->ucFsm              = (uint8_t)th_Fsm;
     
-    pxData->xDi._MPWR_STAT_AC  = GpioGetInput(MPWR_M_STAT_AC);
-    pxData->xDi._MPWR_STAT_DC  = GpioGetInput(MPWR_M_STAT_DC);
+    pxData->xDi._MPWR1_STAT_AC  = GpioGetInput(MPWR1_STAT_AC);
+    pxData->xDi._MPWR1_STAT_DC  = GpioGetInput(MPWR1_STAT_DC);
     pxData->xDi._APWR1_STAT    = GpioGetInput(APWR1_STAT);
     pxData->xDi._APWR2_STAT    = GpioGetInput(APWR2_STAT);
     pxData->xDi._APWR3_STAT    = GpioGetInput(APWR3_STAT);
@@ -1711,7 +1711,7 @@ static void prvSendStatusInfo(void *pvInfo)
     pxData->xDi._WATER_PRESS   = GpioGetInput(WATER_PRESS);
     pxData->xDi._WATER_CHILLER = GpioGetInput(WATER_CHILLER);
 
-    pxData->xDo._MPWR_EN       = GpioGetOutput(MPWR_M_EN);
+    pxData->xDo._MPWR1_EN       = GpioGetOutput(MPWR1_EN);
     pxData->xDo._APWR1_EN      = GpioGetOutput(APWR1_EN);
     pxData->xDo._APWR2_EN      = GpioGetOutput(APWR2_EN);
     pxData->xDo._APWR3_EN      = GpioGetOutput(APWR3_EN);
@@ -1732,9 +1732,10 @@ static void prvSendStatusInfo(void *pvInfo)
     pxData->usAdc[3]           = AdcGet(ADC_CHAN_4);
     pxData->usAdc[4]           = AdcGet(ADC_CHAN_5);
     pxData->usAdc[5]           = AdcGet(ADC_CHAN_6);
-    pxData->usAdc[6]           = AdcGet(ADC_CHAN_7);    /* Â©¹â¼ì²â1 */
-    pxData->usAdc[7]           = AdcGet(ADC_CHAN_7);    /* Â©¹â¼ì²â2 */
-    pxData->usAdc[8]           = AdcGet(ADC_CHAN_7);    /* Â©¹â¼ì²â3 */
+//    pxData->usAdc[6]           = AdcGet(ADC_CHAN_7);    /* Â©¹â¼ì²â1 */
+//    pxData->usAdc[7]           = AdcGet(ADC_CHAN_7);    /* Â©¹â¼ì²â2 */
+//    pxData->usAdc[8]           = AdcGet(ADC_CHAN_7);    /* Â©¹â¼ì²â3 */
+    
     pxData->usAdc[9]           = AdcGet(ADC_CHAN_8);
     
     pxData->usDac[0]           = DacGet(DAC_CHAN_1);
@@ -1745,7 +1746,7 @@ static void prvSendStatusInfo(void *pvInfo)
     pxData->usAdc[2]           = (pxData->usAdc[2] >= 3200) ? 0 : pxData->usAdc[2];
     pxData->usAdc[4]           = (pxData->usAdc[4] >= 3200) ? 0 : pxData->usAdc[4];
     
-    pxData->usMPwrVol          = PwrDataGet(PWR_M_ADDR, PWR_OUTPUT_VOL);
+    pxData->usMPwrVol          = PwrDataGet(PWR2_M1_ADDR, PWR_OUTPUT_VOL);
     
     pxData->usTemp[0]          = StcGetTemp(STC_DEV_1, STC_TEMP_NODE_1);
     pxData->usTemp[1]          = StcGetTemp(STC_DEV_1, STC_TEMP_NODE_2);
@@ -1759,7 +1760,7 @@ static void prvSendStatusInfo(void *pvInfo)
     pxData->usTemp[9]          = StcGetTemp(STC_DEV_1, STC_TEMP_NODE_10);
     
     pxData->usSysStatus        = th_SysStatusAll;
-    pxData->ulPwrStatus        = PwrDataGet(PWR_M_ADDR, PWR_STATUS);
+    pxData->ulPwrStatus        = PwrDataGet(PWR2_M1_ADDR, PWR_STATUS);
     pxData->usSwInfo           = th_SwInfo;
     
     prvSend(GET_CONT_BUFFER(), ucDataSize, rCmdStatusInfo, pvInfo);

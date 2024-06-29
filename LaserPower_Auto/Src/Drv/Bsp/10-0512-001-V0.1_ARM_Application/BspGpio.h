@@ -36,13 +36,6 @@ extern "C" {
 #define DBG_SWCLK_Pin           GPIO_PIN_14
 #define DBG_SWCLK_Pin_Port      GPIOA
 
-#if (REMAP_GPIO_LED_CTRL == 0)
-#define LED_SYS_Pin             GPIO_PIN_8
-#define LED_SYS_Pin_Port        GPIOB
-#else
-#define LED_SYS_Pin             GPIO_PIN_15
-#define LED_SYS_Pin_Port        GPIOA
-#endif /* (REMAP_GPIO_LED_CTRL == 0) */
 #define LED1_Pin                GPIO_PIN_1
 #define LED1_Pin_Port           GPIOE
 #define LED2_Pin                GPIO_PIN_2
@@ -55,13 +48,6 @@ extern "C" {
 #define LED5_Pin_Port           GPIOE
 #define LED6_Pin                GPIO_PIN_6
 #define LED6_Pin_Port           GPIOE
-
-#define DS1302_RST_Pin          GPIO_PIN_13
-#define DS1302_RST_Pin_Port     GPIOD
-#define DS1302_IO_Pin           GPIO_PIN_12
-#define DS1302_IO_Pin_Port      GPIOD
-#define DS1302_CLK_Pin          GPIO_PIN_11
-#define DS1302_CLK_Pin_Port     GPIOD
 
 #define FLASH_CS_Pin            GPIO_PIN_7
 #define FLASH_CS_Pin_Port       GPIOD
@@ -124,24 +110,12 @@ extern "C" {
 #define ETH_TXDP_Pin            GPIO_PIN_13
 #define ETH_TXDP_Pin_Port       GPIOB
 
-#define MPWR_T_STAT_AC_Pin      GPIO_PIN_9
-#define MPWR_T_STAT_AC_Pin_Port GPIOE
-#define MPWR_T_STAT_DC_Pin      GPIO_PIN_8
-#define MPWR_T_STAT_DC_Pin_Port GPIOE
-#define MPWR_T_EN_Pin           GPIO_PIN_7
-#define MPWR_T_EN_Pin_Port      GPIOE
-#define MPWR_M_STAT_AC_Pin      GPIO_PIN_13
-#define MPWR_M_STAT_AC_Pin_Port GPIOE
-#define MPWR_M_STAT_DC_Pin      GPIO_PIN_12
-#define MPWR_M_STAT_DC_Pin_Port GPIOE
-#define MPWR_M_EN_Pin           GPIO_PIN_11
-#define MPWR_M_EN_Pin_Port      GPIOE
-#define MPWR_B_STAT_AC_Pin      GPIO_PIN_6
-#define MPWR_B_STAT_AC_Pin_Port GPIOC
-#define MPWR_B_STAT_DC_Pin      GPIO_PIN_15
-#define MPWR_B_STAT_DC_Pin_Port GPIOD
-#define MPWR_B_EN_Pin           GPIO_PIN_14
-#define MPWR_B_EN_Pin_Port      GPIOD
+#define MPWR1_STAT_AC_Pin       GPIO_PIN_13
+#define MPWR1_STAT_AC_Pin_Port  GPIOE
+#define MPWR1_STAT_DC_Pin       GPIO_PIN_12
+#define MPWR1_STAT_DC_Pin_Port  GPIOE
+#define MPWR1_EN_Pin            GPIO_PIN_11
+#define MPWR1_EN_Pin_Port       GPIOE
 
 #define APWR1_STAT_Pin          GPIO_PIN_0
 #define APWR1_STAT_Pin_Port     GPIOD
@@ -183,16 +157,6 @@ extern "C" {
 #define WATER_CHILLER_Pin       GPIO_PIN_8
 #define WATER_CHILLER_Pin_Port  GPIOC
 
-#define PD_VS_Pin               GPIO_PIN_1
-#define PD_VS_Pin_Port          GPIOB
-
-#if (REMAP_GPIO_LED_CTRL == 0)
-#define LED_CTRL_Pin            GPIO_PIN_15
-#define LED_CTRL_Pin_Port       GPIOA
-#else
-#define LED_CTRL_Pin            GPIO_PIN_8
-#define LED_CTRL_Pin_Port       GPIOB
-#endif /* (REMAP_GPIO_LED_CTRL == 0) */
 #define LED_CUR_Pin             GPIO_PIN_0
 #define LED_CUR_Pin_Port        GPIOC
 
@@ -201,13 +165,26 @@ extern "C" {
 #define I2C_SDA_Pin             GPIO_PIN_13
 #define I2C_SDA_Pin_Port        GPIOD
 
+#define FAULT_Pin               GPIO_PIN_15
+#define FAULT_Pin_Port          GPIOB
+#define EX_AD_EN_Pin            GPIO_PIN_11
+#define EX_AD_EN_Pin_Port       GPIOD
+#define MOD_EN_Pin              GPIO_PIN_14
+#define MOD_EN_Pin_Port         GPIOD
+#define AIM_EN_Pin              GPIO_PIN_15
+#define AIM_EN_Pin_Port         GPIOD
+#define LASER_EN_Pin            GPIO_PIN_6
+#define LASER_EN_Pin_Port       GPIOC
+
+#define BEEP_SW_Pin             GPIO_PIN_13
+#define BEEP_SW_Pin_Port        GPIOC
+
 /* Types */
 typedef enum{
-    MPWR_T_STAT_AC, MPWR_T_STAT_DC,
-    MPWR_M_STAT_AC, MPWR_M_STAT_DC,
-    MPWR_B_STAT_AC, MPWR_B_STAT_DC,
+    MPWR1_STAT_AC, MPWR1_STAT_DC,
     APWR1_STAT, APWR2_STAT, APWR3_STAT, 
     QBH_ON, EX_CTRL_EN, WATER_PRESS, WATER_CHILLER, 
+    AIM_EN, LASER_EN,
 }GpioIn_t;
 
 typedef enum{
@@ -216,10 +193,11 @@ typedef enum{
     RS485a_EN, 
     RS485b_EN, 
     ETH_RST, ETH_EN, 
-    MPWR_T_EN,MPWR_M_EN,MPWR_B_EN,
+    MPWR1_EN,
     APWR1_EN, APWR2_EN, APWR3_EN, 
-    //LED_CTRL, 
     I2C_SCL, I2C_SDA,
+    FAULT, EX_AD_EN, MOD_EN,
+    BEEP_SW,
 }GpioOut_t;
 
 /* Functions */

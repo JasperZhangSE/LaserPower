@@ -693,9 +693,9 @@ static void prvCliCmdStcTemp(cli_printf cliprintf, int argc, char** argv)
         cliprintf("\n");
 
         cliprintf("PD:\n");
-        cliprintf("    PD1 : %4d\n", prvGetTemp(s_xTemp[1].sTemp[2]));
-        cliprintf("    PD2 : %4d\n", prvGetTemp(s_xTemp[1].sTemp[3]));
-        cliprintf("    PD3 : %4d\n", prvGetTemp(s_xTemp[1].sTemp[4]));
+        cliprintf("    PD1 : %4d\n", s_xTemp[1].sTemp[2]);
+        cliprintf("    PD2 : %4d\n", s_xTemp[1].sTemp[3]);
+        cliprintf("    PD3 : %4d\n", s_xTemp[1].sTemp[4]);
     }
     
     return;

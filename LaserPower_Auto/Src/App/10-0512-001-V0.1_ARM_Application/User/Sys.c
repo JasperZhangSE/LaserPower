@@ -33,13 +33,10 @@
 #undef SYS_DEBUG
 #define SYS_DEBUG       1   /* XXX: SYS_DEBUG */
 
-#undef PWR_50KW_TEST
-#define PWR_50KW_TEST   1
-
 /* Debug config */
 #if SYS_DEBUG
     #undef TRACE
-    #define TRACE(...) if (th_SysDebug) DebugPrintf(__VA_ARGS__)
+    #define TRACE(...)  if (th_SysDebug) DebugPrintf(__VA_ARGS__)
 #else
     #undef TRACE
     #define TRACE(...)
@@ -82,8 +79,6 @@
 /* Forward declaration */
 static void prvSysTask        (void* pvPara);
 static void prvDaemonTask     (void* pvPara);
-//static void prvSysLEDTask     (void* pvPara);
-    
 /* State machine */
 static void prvProc           (void);
 static void prvFsmStart       (State_t *pxState);
@@ -108,7 +103,6 @@ static bool prvChkAPwr        (void);
 static void prvEnterFsm       (void);
 static void prvProcManualCtrl (void);
 static void prvProcPanelLed   (void);
-static void prvChkCtrl        (void);
 
 /* Global variables */
 State_t *g_pxState = NULL;
@@ -141,10 +135,6 @@ Status_t AppSysInit(void)
         DrvPwr2Enable();
 #endif /* ENABLE_SYS_AUTO */
     DrvPwrInit();
-    /* 设置占空比为FLASH中的值 */
-    //Set_AimLight_Cur(th_PwmDuty);
-    /* Check internal or external control. */
-    prvChkCtrl();
     
     memset(&s_xState, 0, sizeof(s_xState));
     g_pxState        = &s_xState;
@@ -152,8 +142,6 @@ Status_t AppSysInit(void)
     g_xSysStatus.all = 0;
     xTaskCreate(prvSysTask, "tSys", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
     xTaskCreate(prvDaemonTask, "tDaemon", 256, NULL, tskIDLE_PRIORITY + 0, NULL);
-    
-    //xTaskCreate(prvSysLEDTask, "tSysLed", 256, NULL, tskIDLE_PRIORITY + 0, NULL);
     
     return STATUS_OK;
 }
@@ -306,7 +294,7 @@ static void prvSysTask(void* pvPara)
         th_SwInfo = 0x8000;
     }
     else {
-        Time_t xTm = RtcReadTime(RTC_TYPE_DS1338);
+        Time_t xTm = RtcReadTime(RTC_TYPE_DS1302);
         uint32_t ulCurrentTime = mktime(&xTm);
         uint32_t ulExpiredTime = th_TrialStTime + th_TrialDays * 86400;
         if (ulCurrentTime < ulExpiredTime) {
@@ -318,7 +306,7 @@ static void prvSysTask(void* pvPara)
             th_SwInfo = 0;
         }
     }
-    osDelay(SYS_TASK_INIT_WAIT);
+    
     while (1) {
         if (s_bProc) {
             prvProc();
@@ -336,31 +324,6 @@ static void prvDaemonTask(void* pvPara)
         osDelay(LED_TASK_DELAY);
     }
 }
-
-#if 0
-static void prvSysLEDTask(void* pvPara)
-{
-    uint16_t light = 0;
-    while (1) {
-        if (s_bSysLed)
-        {
-            for (light = 0; light <= 100; light++)
-            {
-                Set_SysLed_Light(light);
-                osDelay(10);
-            }
-            osDelay(280);
-            for (light = 100; light > 0; light--)
-            {
-                Set_SysLed_Light(light);
-                osDelay(10);
-            }
-        }
-        osDelay(360);
-        //TRACE("SYS_LED_OK\n");
-    }
-}
-#endif
 
 static void prvProc(void)
 {
@@ -623,8 +586,6 @@ static void prvFsmInfraredInit(State_t *pxState)
     pxState->xState = FSM_INFRARED_RUN;
     pxState->ulCounter = 0;
     th_SysStatus.WORK_INFRARED = 1;
-    //GpioSetOutput(LED_CTRL, LED_CTRL_ON);
-    //Set_AimLight_Cur(th_PwmDuty);
     ToggleAimLight(1);
     TRACE("[%6d] InfraredInit -> InfraredRun\n", SYS_TICK_GET());
     TRACE("[%6d]     Set LED_CTRL on\n", SYS_TICK_GET());
@@ -643,8 +604,6 @@ static void prvFsmInfraredDone(State_t *pxState)
     pxState->xState = FSM_IDLE;
     pxState->ulCounter = 0;
     th_SysStatus.WORK_INFRARED = 0;
-    //GpioSetOutput(LED_CTRL, LED_CTRL_OFF);
-    //Set_AimLight_Cur(0);
     ToggleAimLight(0);
     TRACE("[%6d] InfraredDone -> Idle\n", SYS_TICK_GET());
     TRACE("[%6d]     Set LED_CTRL off\n", SYS_TICK_GET());
@@ -663,31 +622,14 @@ static void prvFsmError(State_t *pxState)
 
 static bool prvInitChkMPwr(void)
 {
-    uint16_t sT1 = !GpioGetInput(MPWR_T_STAT_AC);
-    uint16_t sT2 = GpioGetInput(MPWR_T_STAT_DC);
-    uint16_t sM1 = !GpioGetInput(MPWR_M_STAT_AC);
-    uint16_t sM2 = GpioGetInput(MPWR_M_STAT_DC);
-    uint16_t sB1 = !GpioGetInput(MPWR_B_STAT_AC);
-    uint16_t sB2 = GpioGetInput(MPWR_B_STAT_DC);
+    uint16_t s1 = GpioGetInput(MPWR1_STAT_AC);
+    uint16_t s2 = GpioGetInput(MPWR1_STAT_DC);
     bool     b  = PwrIsOk();
-    if ((sT1 == MPWR_AC_OK) && (GpioGetOutput(MPWR_T_EN) != MPWR_ON)) {
-        GpioSetOutput(MPWR_T_EN, MPWR_ON);
-        TRACE("[%6d]     Set MPWR_T_EN on\n", SYS_TICK_GET());
+    if ((s1 == MPWR_AC_OK) && (GpioGetOutput(MPWR1_EN) != MPWR_ON)) {
+        GpioSetOutput(MPWR1_EN, MPWR_ON);
+        TRACE("[%6d]     Set MPWR1_EN on\n", SYS_TICK_GET());
     }
-    if ((sM1 == MPWR_AC_OK) && (GpioGetOutput(MPWR_M_EN) != MPWR_ON)) {
-        GpioSetOutput(MPWR_M_EN, MPWR_ON);
-        TRACE("[%6d]     Set MPWR_M_EN on\n", SYS_TICK_GET());
-    }
-    if ((sB1 == MPWR_AC_OK) && (GpioGetOutput(MPWR_B_EN) != MPWR_ON)) {
-        GpioSetOutput(MPWR_B_EN, MPWR_ON);
-        TRACE("[%6d]     Set MPWR_B_EN on\n", SYS_TICK_GET());
-    }
-    /* Test 版本支持单电源DC_OK开激光 */
-#if PWR_50KW_TEST
-    return (((sT1 == MPWR_AC_OK) || (sM1 == MPWR_AC_OK) || (sB1 == MPWR_AC_OK)) && (sM2 == MPWR_DC_OK) && b) ? true : false;
-#else
-    return ((sT1 == MPWR_AC_OK)&&(sM1 == MPWR_AC_OK)&&(sB1 == MPWR_AC_OK) && (sM2 == MPWR_DC_OK) && b) ? true : false;
-#endif
+    return ((s1 == MPWR_AC_OK) && (s2 == MPWR_DC_OK) && b) ? true : false;
 }
 
 static bool prvChkPwr(void)
@@ -697,26 +639,10 @@ static bool prvChkPwr(void)
 
 static bool prvChkMPwr(void)
 {
-    int32_t vT = PwrDataGet(PWR_T_ADDR, PWR_OUTPUT_VOL);
-    int32_t vM = PwrDataGet(PWR_M_ADDR, PWR_OUTPUT_VOL);
-    int32_t vB = PwrDataGet(PWR_B_ADDR, PWR_OUTPUT_VOL);
-    
-    uint16_t sT1 = GpioGetInput(MPWR_T_STAT_AC);
-    uint16_t sT2 = GpioGetInput(MPWR_T_STAT_DC);
-    uint16_t sM1 = GpioGetInput(MPWR_M_STAT_AC);
-    uint16_t sM2 = GpioGetInput(MPWR_M_STAT_DC);
-    uint16_t sB1 = GpioGetInput(MPWR_B_STAT_AC);
-    uint16_t sB2 = GpioGetInput(MPWR_B_STAT_DC);
-    
-#if PWR_50KW_TEST
-    return (((vT >= 650/*0.1V*/) && (sT1 == MPWR_AC_OK) && (sT2 == MPWR_DC_OK)) || 
-            ((vM >= 650/*0.1V*/) && (sM1 == MPWR_AC_OK) && (sM2 == MPWR_DC_OK)) || 
-            ((vB >= 650/*0.1V*/) && (sB1 == MPWR_AC_OK) && (sB2 == MPWR_DC_OK))) ? true : false;
-#else
-    return (((vT >= 650/*0.1V*/) && (sT1 == MPWR_AC_OK) && (sT2 == MPWR_DC_OK)) && 
-            ((vM >= 650/*0.1V*/) && (sM1 == MPWR_AC_OK) && (sM2 == MPWR_DC_OK)) && 
-            ((vB >= 650/*0.1V*/) && (sB1 == MPWR_AC_OK) && (sB2 == MPWR_DC_OK))) ? true : false;
-#endif
+    int32_t v = PwrDataGet(PWR2_M1_ADDR, PWR_OUTPUT_VOL);
+    uint16_t s1 = GpioGetInput(MPWR1_STAT_AC);
+    uint16_t s2 = GpioGetInput(MPWR1_STAT_DC);
+    return ((v >= 650/*0.1V*/) && (s1 == MPWR_AC_OK) && (s2 == MPWR_DC_OK)) ? true : false;
 }
 
 static bool prvChkAPwr(void)
@@ -746,7 +672,7 @@ static bool prvChkAPwr(void)
     }
     
     /* 温度组2检测 */
-    int16_t sTemp2 = StcGetTempHFrom(th_TempNum, 24 - 1);
+    int16_t sTemp2 = StcGetTempHFrom(th_TempNum, 10 - 1);
     if (th_ModEn.TEMP2) {
         if (sTemp2 <= th_OtCutTh) {
             /* 切断温度 */
@@ -757,13 +683,6 @@ static bool prvChkAPwr(void)
             /* 告警温度 */
             /* TRACE("[%6d]     Group2 over warning temperature\n", SYS_TICK_GET()); */
         }
-    }
-    
-    /* PD漏光检测 */
-    uint16_t usPd = StcGetPdHFrom();
-    if (th_ModEn.PD && ((usPd >= th_PdWarnL1))) {
-        TRACE("[%6d]     PD_VS is over threshold\n", SYS_TICK_GET());
-        return false;
     }
     
     /* QBH旋钮到位检测 */
@@ -783,14 +702,14 @@ static bool prvChkAPwr(void)
         TRACE("[%6d]     WATER_PRESS is off\n", SYS_TICK_GET());
         return false;
     }
-#if 0
+    
     /* PD漏光检测 */
     uint16_t usPd = AdcGet(PD_VS);
     if (th_ModEn.PD && ((usPd >= th_PdWarnL1))) {
         TRACE("[%6d]     PD_VS is over threshold\n", SYS_TICK_GET());
         return false;
     }
-#endif   
+    
     /* 通道1电流检测 */
     uint16_t usChan1Cur = AdcGet(APWR1_CUR);
     if (th_ModEn.CHAN1_CUR && (usChan1Cur > th_MaxCurAd)) {
@@ -811,6 +730,7 @@ static bool prvChkAPwr(void)
         TRACE("[%6d]     APWR3_CUR is over threshold\n", SYS_TICK_GET());
         return false;
     }
+    
     return true;
 }
 
@@ -822,165 +742,6 @@ static void prvEnterFsm(void)
     GpioSetOutput(APWR3_EN, APWR_OFF);
 }
 
-static Status_t prvChkEnviroment(void)
-{
-    uint8_t s_MPWR_T_STAT_AC   = GpioGetInput(MPWR_T_STAT_AC);
-    uint8_t s_MPWR_T_STAT_DC   = GpioGetInput(MPWR_T_STAT_DC);
-    uint8_t s_MPWR_M_STAT_AC   = GpioGetInput(MPWR_M_STAT_AC);
-    uint8_t s_MPWR_M_STAT_DC   = GpioGetInput(MPWR_M_STAT_DC);
-    uint8_t s_MPWR_B_STAT_AC   = GpioGetInput(MPWR_B_STAT_AC);
-    uint8_t s_MPWR_B_STAT_DC   = GpioGetInput(MPWR_B_STAT_DC);
-    uint8_t s_APWR1_STAT       = GpioGetInput(APWR1_STAT);
-    uint8_t s_APWR2_STAT       = GpioGetInput(APWR2_STAT);
-    uint8_t s_APWR3_STAT       = GpioGetInput(APWR3_STAT);
-    uint8_t s_QBH_ON           = GpioGetInput(QBH_ON);
-    uint8_t s_WATER_PRESS      = GpioGetInput(WATER_PRESS);
-    uint8_t s_WATER_CHILLER    = GpioGetInput(WATER_CHILLER);
-    int16_t s_MAX_TEMP1        = StcGetTempHFrom(0, th_TempNum - 1);
-    int16_t s_MAX_TEMP2        = StcGetTempHFrom(th_TempNum, 10 - 1);
-    int32_t s_PWR_T_OUTPUT_VOL = PwrDataGet(PWR_T_ADDR, PWR_OUTPUT_VOL);
-    int32_t s_PWR_M_OUTPUT_VOL = PwrDataGet(PWR_M_ADDR, PWR_OUTPUT_VOL);
-    int32_t s_PWR_B_OUTPUT_VOL = PwrDataGet(PWR_B_ADDR, PWR_OUTPUT_VOL);
-    uint16_t s_PD              = AdcGet(PD_VS);
-    uint16_t s_CHAN1_CUR       = AdcGet(APWR1_CUR);
-    uint16_t s_CHAN2_CUR       = AdcGet(APWR2_CUR);
-    uint16_t s_CHAN3_CUR       = AdcGet(APWR3_CUR);
-    
-    /* Check enviroment */
-    /* G: PWR_OUTPUT_VOL >= 65V */
-    /* R: PWR_OUTPUT_VOL <  65V */
-    static uint8_t s1 = 0xFF;
-#if PWR_50KW_TEST
-    if ((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) || (s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) || (s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/)) {
-#else
-    if ((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) && (s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) && (s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/)) {
-#endif
-        if (s1 != 1) {
-            GpioSetOutput(LED_POWER_G, LED_ON);
-            GpioSetOutput(LED_POWER_R, LED_OFF);
-            s1 = 1;
-        }
-    }
-    else {
-        if (s1 != 0) {
-            GpioSetOutput(LED_POWER_G, LED_OFF);
-            GpioSetOutput(LED_POWER_R, LED_ON);
-            s1 = 0;
-        }
-    }
-    
-     /* Alarm */
-    uint8_t s3 = 0xFF;
-    /* R: QBH_ON 1 */
-    /* R: WATER_PRESS 1 */
-    /* R: WATER_CHILLER 1 */
-    /* R: Max temperature > over temperature cut threshold */
-    /* R: Channel current > maximum current */
-    /* R: TODO: MPWR CAN */
-    /* R: PD */
-    if ((th_ModEn.QBH           && (s_QBH_ON == QBH_ON_OFF))               || 
-        (th_ModEn.WATER_PRESS   && (s_WATER_PRESS == WATER_PRESS_OFF))     || 
-        (th_ModEn.WATER_CHILLER && (s_WATER_CHILLER == WATER_CHILLER_OFF)) || 
-        (th_ModEn.TEMP1         && (s_MAX_TEMP1 <= th_OtCutTh))            || 
-        (th_ModEn.TEMP2         && (s_MAX_TEMP2 <= th_OtCutTh))            || 
-        (th_ModEn.CHAN1_CUR     && (s_CHAN1_CUR > th_MaxCurAd))            || 
-        (th_ModEn.CHAN2_CUR     && (s_CHAN2_CUR > th_MaxCurAd))            || 
-        (th_ModEn.CHAN3_CUR     && (s_CHAN3_CUR > th_MaxCurAd))            || 
-        (th_ModEn.PD            && (s_PD >= th_PdWarnL1))) {
-        if (s3 != 0) {
-//            GpioSetOutput(LED_ALARM_R, LED_ON);
-//            GpioSetOutput(LED_ALARM_G, LED_OFF);
-            /* Turn off the MOD switch here. */
-            return STATUS_ERR;
-            s3 = 0;
-        }
-    }
-    /* Y: Max temperature > over temperature warn threshold */
-    /* Y: PD */
-    /* Y: TODO: CAN */
-    else if ((th_ModEn.TEMP1         && (s_MAX_TEMP1 <= th_OtWarnTh))      || 
-             (th_ModEn.TEMP2         && (s_MAX_TEMP2 <= th_OtWarnTh))      || 
-             (th_ModEn.PD            && (s_PD >= th_PdWarnL1))) {
-        if (s3 != 1) {
-//            GpioSetOutput(LED_ALARM_R, LED_ON);
-//            GpioSetOutput(LED_ALARM_G, LED_ON);
-            /* Turn on the MOD */
-            return STATUS_OK;
-            s3 = 1;
-        }
-    }
-    /* G: Otherwise */
-    else {
-        if (s3 != 2) {
-//            GpioSetOutput(LED_ALARM_R, LED_OFF);
-//            GpioSetOutput(LED_ALARM_G, LED_ON);
-            /* Turn on the MOD */
-            return STATUS_OK;
-            s3 = 2;
-        }
-    }
-    return STATUS_OK;
-}
-
-static void prvProcManualCtrl(void)
-{
-    static uint8_t on = 0;
-    static uint8_t off = 0;
-
-    if (!s_bManualCtrl || !th_ModEn.MANUAL) {
-        return;
-    }
-    
-    if (GpioGetInput(EX_CTRL_EN) == 0) {
-        on++;
-        if (on >= 3) {
-            on = 3;
-        }
-    }
-    else {
-        on = 0;
-    }
-    
-    if (GpioGetInput(EX_CTRL_EN) == 1) {
-        off++;
-        if (off >= 3) {
-            off = 3;
-        }
-    }
-    else {
-        off = 0;
-    }
-    
-    Status_t Chk = prvChkEnviroment();
-    if (Chk == STATUS_ERR){
-        /* Turn off the MOD here. */
-    }
-    else
-    {
-        /* Turn on the MOD here. */
-        
-    }
-    
-    /* Manual control: on */
-    if ((on == 3) && (Chk == STATUS_ERR)) {
-        /* Turn off the MOD here. */
-    }
-    else if (on == 3)
-    {
-        /* Turn on the MOD here. */
-        
-    }
-    
-    /* Manual control: off */
-    if (off == 3) {
-        /* Turn off the MOD here. */
-        
-    }
-    
-    
-}
-
-#if 0
 static void prvProcManualCtrl(void)
 {
     static uint8_t on = 0;
@@ -1054,38 +815,32 @@ static void prvProcManualCtrl(void)
         }
     }
 }
-#endif
 
 static void prvProcPanelLed(void)
 {
-    uint8_t s_MPWR_T_STAT_AC   = GpioGetInput(MPWR_T_STAT_AC);
-    uint8_t s_MPWR_T_STAT_DC   = GpioGetInput(MPWR_T_STAT_DC);
-    uint8_t s_MPWR_M_STAT_AC   = GpioGetInput(MPWR_M_STAT_AC);
-    uint8_t s_MPWR_M_STAT_DC   = GpioGetInput(MPWR_M_STAT_DC);
-    uint8_t s_MPWR_B_STAT_AC   = GpioGetInput(MPWR_B_STAT_AC);
-    uint8_t s_MPWR_B_STAT_DC   = GpioGetInput(MPWR_B_STAT_DC);
-    uint8_t s_APWR1_STAT       = GpioGetInput(APWR1_STAT);
-    uint8_t s_APWR2_STAT       = GpioGetInput(APWR2_STAT);
-    uint8_t s_APWR3_STAT       = GpioGetInput(APWR3_STAT);
-    uint8_t s_QBH_ON           = GpioGetInput(QBH_ON);
-    uint8_t s_WATER_PRESS      = GpioGetInput(WATER_PRESS);
-    uint8_t s_WATER_CHILLER    = GpioGetInput(WATER_CHILLER);
-    int16_t s_MAX_TEMP1        = StcGetTempHFrom(0, th_TempNum - 1);
-    int16_t s_MAX_TEMP2        = StcGetTempHFrom(th_TempNum, 10 - 1);
-    int32_t s_PWR_T_OUTPUT_VOL = PwrDataGet(PWR_T_ADDR, PWR_OUTPUT_VOL);
-    int32_t s_PWR_M_OUTPUT_VOL = PwrDataGet(PWR_M_ADDR, PWR_OUTPUT_VOL);
-    int32_t s_PWR_B_OUTPUT_VOL = PwrDataGet(PWR_B_ADDR, PWR_OUTPUT_VOL);
-    uint16_t s_PD              = AdcGet(PD_VS);
-    uint16_t s_CHAN1_CUR       = AdcGet(APWR1_CUR);
-    uint16_t s_CHAN2_CUR       = AdcGet(APWR2_CUR);
-    uint16_t s_CHAN3_CUR       = AdcGet(APWR3_CUR);
+    uint8_t s_MPWR1_STAT_AC   = GpioGetInput(MPWR1_STAT_AC);
+    uint8_t s_MPWR1_STAT_DC   = GpioGetInput(MPWR1_STAT_DC);
+    uint8_t s_APWR1_STAT     = GpioGetInput(APWR1_STAT);
+    uint8_t s_APWR2_STAT     = GpioGetInput(APWR2_STAT);
+    uint8_t s_APWR3_STAT     = GpioGetInput(APWR3_STAT);
+    uint8_t s_QBH_ON         = GpioGetInput(QBH_ON);
+    uint8_t s_WATER_PRESS    = GpioGetInput(WATER_PRESS);
+    uint8_t s_WATER_CHILLER  = GpioGetInput(WATER_CHILLER);
+    int16_t s_MAX_TEMP1      = StcGetTempHFrom(0, th_TempNum - 1);
+    int16_t s_MAX_TEMP2      = StcGetTempHFrom(th_TempNum, 10 - 1);
+    int32_t s_PWR_OUTPUT_VOL = PwrDataGet(PWR2_M1_ADDR, PWR_OUTPUT_VOL);
+    uint16_t s_PD            = AdcGet(PD_VS);
+    uint16_t s_CHAN1_CUR     = AdcGet(APWR1_CUR);
+    uint16_t s_CHAN2_CUR     = AdcGet(APWR2_CUR);
+    uint16_t s_CHAN3_CUR     = AdcGet(APWR3_CUR);
     
     /* Power */
-#if 0   /* G: MCU_DC_OK 1 */
+#if 0
+    /* G: MCU_DC_OK 1 */
     /* R: MCU_DC_OK 0 */
     static uint8_t s1 = 0xFF;
-    if (s1 != s_MPWR_STAT_DC) {
-        if (s_MPWR_STAT_DC == MPWR_DC_OK) {
+    if (s1 != s_MPWR1_STAT_DC) {
+        if (s_MPWR1_STAT_DC == MPWR_DC_OK) {
             GpioSetOutput(LED_POWER_G, LED_ON);
             GpioSetOutput(LED_POWER_R, LED_OFF);
         }
@@ -1093,17 +848,13 @@ static void prvProcPanelLed(void)
             GpioSetOutput(LED_POWER_G, LED_OFF);
             GpioSetOutput(LED_POWER_R, LED_ON);
         }
-        s1 = s_MPWR_STAT_DC;
+        s1 = s_MPWR1_STAT_DC;
     }
 #else
     /* G: PWR_OUTPUT_VOL >= 65V */
     /* R: PWR_OUTPUT_VOL <  65V */
     static uint8_t s1 = 0xFF;
-#if PWR_50KW_TEST
-    if ((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) || (s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) || (s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/)) {
-#else
-    if ((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) && (s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) && (s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/)) {
-#endif
+    if (s_PWR_OUTPUT_VOL >= 650/*0.1V*/) {
         if (s1 != 1) {
             GpioSetOutput(LED_POWER_G, LED_ON);
             GpioSetOutput(LED_POWER_R, LED_OFF);
@@ -1192,34 +943,21 @@ static void prvProcPanelLed(void)
     
     /* System status update */
     /* Main power */
-#if PWR_50KW_TEST
-    if (((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_T_STAT_AC == MPWR_AC_OK) && (s_MPWR_T_STAT_DC == MPWR_DC_OK)) || 
-        ((s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_M_STAT_AC == MPWR_AC_OK) && (s_MPWR_M_STAT_DC == MPWR_DC_OK)) ||
-        ((s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_B_STAT_AC == MPWR_AC_OK) && (s_MPWR_B_STAT_DC == MPWR_DC_OK))) {
+    if ((s_PWR_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR1_STAT_AC == MPWR_AC_OK) && (s_MPWR1_STAT_DC == MPWR_AC_OK)) {
         th_SysStatus.STATUS_MPWR = 1;
     }
-#else
-    if (((s_PWR_T_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_T_STAT_AC == MPWR_AC_OK) && (s_MPWR_T_STAT_DC == MPWR_DC_OK)) && 
-        ((s_PWR_M_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_M_STAT_AC == MPWR_AC_OK) && (s_MPWR_M_STAT_DC == MPWR_DC_OK)) &&
-        ((s_PWR_B_OUTPUT_VOL >= 650/*0.1V*/) && (s_MPWR_B_STAT_AC == MPWR_AC_OK) && (s_MPWR_B_STAT_DC == MPWR_DC_OK))) {
-        th_SysStatus.STATUS_MPWR = 1;
-    }
-#endif
-    
     else {
         th_SysStatus.STATUS_MPWR = 0;
     }
     /* Emergent stop */
-    static uint8_t s_last_MPWR_STAT_AC = 0;
-    if ((s_last_MPWR_STAT_AC == 0) && (s_MPWR_M_STAT_AC == 1)) {
+    static uint8_t s_last_MPWR1_STAT_AC = 0;
+    if ((s_last_MPWR1_STAT_AC == 0) && (s_MPWR1_STAT_AC == 1)) {
         th_SysStatus.ALARM_EMCY_STOP = 0;
     }
-    if ((s_last_MPWR_STAT_AC == 1) && (s_MPWR_M_STAT_AC == 0)) {
+    if ((s_last_MPWR1_STAT_AC == 1) && (s_MPWR1_STAT_AC == 0)) {
         th_SysStatus.ALARM_EMCY_STOP = 1;
     }
-    s_last_MPWR_STAT_AC = s_MPWR_M_STAT_AC;
-    
-    
+    s_last_MPWR1_STAT_AC = s_MPWR1_STAT_AC;
     /* Water chiller */
     if (th_ModEn.WATER_CHILLER && (s_WATER_CHILLER == WATER_CHILLER_OFF)) {
         th_SysStatus.ALARM_WATER_CHILLER = 1;
@@ -1269,13 +1007,6 @@ static void prvProcPanelLed(void)
     }
 }
 
-static void prvChkCtrl(void)
-{
-    /* Control switch on or off. */
-    
-    
-}
-
 static void prvCliCmdSysFsm(cli_printf cliprintf, int argc, char** argv)
 {
     CHECK_CLI();
@@ -1323,5 +1054,3 @@ static void prvCliCmdShowSysStatus(cli_printf cliprintf, int argc, char** argv)
     cliprintf("RUN                : %d\n", th_SysStatus.RUN);
 }
 CLI_CMD_EXPORT(show_sys_status, show system status, prvCliCmdShowSysStatus)
-
-

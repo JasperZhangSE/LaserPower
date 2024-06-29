@@ -198,8 +198,7 @@ static void prvCliCmdCfgShow(cli_printf cliprintf, int argc, char** argv)
     cliprintf("GwAddr   : %s\n", ipaddr_ntoa((const ip_addr_t*)&(th_LocalGwAddr)));
     cliprintf("PWMDuty  : %d\n", th_PwmDuty);
     cliprintf("CtrlMode : %d\n", th_CtrlMode);
-    
-    
+
 }
 CLI_CMD_EXPORT(cfg_show, show config parameters, prvCliCmdCfgShow)
 

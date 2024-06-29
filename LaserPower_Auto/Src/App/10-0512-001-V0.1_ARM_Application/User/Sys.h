@@ -34,10 +34,12 @@
 extern "C" {
 #endif /*__cplusplus */
 
+#include "stm32f1xx_hal.h"
+#include "Include/Include.h"
+
 /* Defines */
 #define SYS_TASK_DELAY  1   /* ms */
 #define LED_TASK_DELAY  100 /* ms */
-#define SYS_TASK_INIT_WAIT 10 /* ms */
 #define FSM_READY_WAIT  (2500 / SYS_TASK_DELAY)
 #define th_Fsm          g_pxState->xState
 #define th_RunTime      g_pxState->ulRunTime

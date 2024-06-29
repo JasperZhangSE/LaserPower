@@ -149,9 +149,9 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* pxCan)
 
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef *pxCan)
 {
-    CanRxNotify(PWR_T_ADDR, pxCan->pRxMsg);
-    CanRxNotify(PWR_M_ADDR, pxCan->pRxMsg);
-    CanRxNotify(PWR_B_ADDR, pxCan->pRxMsg);
+    CanRxNotify(PWR2_M2_ADDR, pxCan->pRxMsg);
+    CanRxNotify(PWR2_M1_ADDR, pxCan->pRxMsg);
+    CanRxNotify(PWR2_M3_ADDR, pxCan->pRxMsg);
     /* Restart receive */
 #if 0
     HAL_CAN_Receive_IT(&s_hCan, CAN_FIFO0);

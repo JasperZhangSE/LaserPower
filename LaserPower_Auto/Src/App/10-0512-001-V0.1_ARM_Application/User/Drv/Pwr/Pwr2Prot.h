@@ -24,9 +24,13 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define PWR_T_ADDR          1
-#define PWR_M_ADDR          2
-#define PWR_B_ADDR          3
+#include "Include/Include.h"
+#include "User/Drv/Pwr.h"
+#include "User/Drv/Can.h"
+
+#define PWR2_M1_ADDR          1
+#define PWR2_M2_ADDR          2
+#define PWR2_M3_ADDR          3
 
 /* Functions */
 Status_t Pwr2ProtInit(void);

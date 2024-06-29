@@ -105,7 +105,7 @@ Status_t PwrOutput(uint8_t ucOnOff)
 
 #if PWR2_ENABLE
     if (s_bEnPwr2) {
-        return Pwr2Output(PWR_M_ADDR, ucOnOff);
+        return Pwr2Output(PWR2_M1_ADDR, ucOnOff);
     }
 #endif /* PWR2_ENABLE */
     
@@ -124,9 +124,9 @@ int32_t PwrDataGet(uint32_t ulPwr2Addr, PwrDataType_t xType)
     if (s_bEnPwr2) {
         switch (ulPwr2Addr)
         {
-            case PWR_T_ADDR: return Pwr2DataGet(PWR_T_ADDR, xType); break;
-            case PWR_M_ADDR: return Pwr2DataGet(PWR_M_ADDR, xType); break;
-            case PWR_B_ADDR: return Pwr2DataGet(PWR_B_ADDR, xType); break;
+            case PWR2_M2_ADDR: return Pwr2DataGet(PWR2_M2_ADDR, xType); break;
+            case PWR2_M1_ADDR: return Pwr2DataGet(PWR2_M1_ADDR, xType); break;
+            case PWR2_M3_ADDR: return Pwr2DataGet(PWR2_M3_ADDR, xType); break;
         }
         
     }
@@ -184,9 +184,9 @@ void CanRxNotify(uint32_t ulPwr2Addr, CanMsgRx_t *pxMsg)
     if (s_bEnPwr2) {
         switch (ulPwr2Addr)
         {
-            case PWR_T_ADDR: Pwr2CanRxNotify(PWR_T_ADDR, pxMsg);break;
-            case PWR_M_ADDR: Pwr2CanRxNotify(PWR_M_ADDR, pxMsg);break;
-            case PWR_B_ADDR: Pwr2CanRxNotify(PWR_B_ADDR, pxMsg);break;
+            case PWR2_M2_ADDR: Pwr2CanRxNotify(PWR2_M2_ADDR, pxMsg);break;
+            case PWR2_M1_ADDR: Pwr2CanRxNotify(PWR2_M1_ADDR, pxMsg);break;
+            case PWR2_M3_ADDR: Pwr2CanRxNotify(PWR2_M3_ADDR, pxMsg);break;
         }
         
     }
@@ -206,9 +206,7 @@ static void prvCliCmdPwrMEnable(cli_printf cliprintf, int argc, char** argv)
     int lCtrl = atoi(argv[2]);
     switch (lDev)
     {
-        case 1: GpioSetOutput(MPWR_T_EN, lCtrl); break;
-        case 2: GpioSetOutput(MPWR_M_EN, lCtrl); break;
-        case 3: GpioSetOutput(MPWR_B_EN, lCtrl); break;
+        case 1: GpioSetOutput(MPWR1_EN, lCtrl); break;
     }
     
 }
@@ -218,22 +216,10 @@ static void prvCliCmdPwrMStatus(cli_printf cliprintf, int argc, char** argv)
 {
     CHECK_CLI();
     
-    cliprintf("Main power status:\n");
-    cliprintf("    MPWR_T_STAT_AC [MCU_AC_OK, DI]: %d\n", GpioGetInput(MPWR_T_STAT_AC));
-    cliprintf("    MPWR_T_STAT_DC [MCU_DC_OK, DI]: %d\n", GpioGetInput(MPWR_T_STAT_DC));
-    cliprintf("    MPWR_T_EN      [MCU_SW_OK, DO]: %d\n", GpioGetOutput(MPWR_T_EN));
+    cliprintf("    MPWR1_STAT_AC [MCU_AC_OK, DI]: %d\n", GpioGetInput(MPWR1_STAT_AC));
+    cliprintf("    MPWR1_STAT_DC [MCU_DC_OK, DI]: %d\n", GpioGetInput(MPWR1_STAT_DC));
+    cliprintf("    MPWR1_EN      [MCU_SW_OK, DO]: %d\n", GpioGetOutput(MPWR1_EN));
     cliprintf("\n");
-    
-    cliprintf("    MPWR_M_STAT_AC [MCU_AC_OK, DI]: %d\n", GpioGetInput(MPWR_M_STAT_AC));
-    cliprintf("    MPWR_M_STAT_DC [MCU_DC_OK, DI]: %d\n", GpioGetInput(MPWR_M_STAT_DC));
-    cliprintf("    MPWR_M_EN      [MCU_SW_OK, DO]: %d\n", GpioGetOutput(MPWR_M_EN));
-    cliprintf("\n");
-    
-    cliprintf("    MPWR_B_STAT_AC [MCU_AC_OK, DI]: %d\n", GpioGetInput(MPWR_B_STAT_AC));
-    cliprintf("    MPWR_B_STAT_DC [MCU_DC_OK, DI]: %d\n", GpioGetInput(MPWR_B_STAT_DC));
-    cliprintf("    MPWR_B_EN      [MCU_SW_OK, DO]: %d\n", GpioGetOutput(MPWR_B_EN));
-    cliprintf("\n");
-
 }
 CLI_CMD_EXPORT(pwr_m_status, show main power status, prvCliCmdPwrMStatus)
 
@@ -269,9 +255,9 @@ static void prvCliCmdPwrAStatus(cli_printf cliprintf, int argc, char** argv)
     uint16_t usVol2 = AdcGet(AUX2_VS);
     uint16_t usVol3 = AdcGet(AUX3_VS);
     
-    float fVol1 = GpioGetOutput(APWR1_EN) ? ADC_TO_VOL(usVol1, PWR_T_ADDR) : 0;
-    float fVol2 = GpioGetOutput(APWR2_EN) ? ADC_TO_VOL(usVol2, PWR_M_ADDR) : 0;
-    float fVol3 = GpioGetOutput(APWR3_EN) ? ADC_TO_VOL(usVol3, PWR_B_ADDR) : 0;
+    float fVol1 = GpioGetOutput(APWR1_EN) ? ADC_TO_VOL(usVol1, PWR2_M2_ADDR) : 0;
+    float fVol2 = GpioGetOutput(APWR2_EN) ? ADC_TO_VOL(usVol2, PWR2_M1_ADDR) : 0;
+    float fVol3 = GpioGetOutput(APWR3_EN) ? ADC_TO_VOL(usVol3, PWR2_M3_ADDR) : 0;
     
     cliprintf("Auxiliary power status:\n");
     

@@ -61,7 +61,6 @@ extern "C" {
 
 #define ADC_TO_VOL(d,a)   (PwrDataGet(a, PWR_OUTPUT_VOL) * 0.1/*V*/ - ((d) * ADC_VREF / 4096 * (th_AdVolPara * 0.001) * 0.001/*V*/))
 
-
 #define CUR_TO_DAC(d)   ((d) * 4096 * 2500/*mV*/ / DAC_VREF / 50/*A*/)
 #define CUR_TO_ADC(d)   ((d) * 4096 * 2500/*mV*/ / ADC_VREF / 50/*A*/)
 

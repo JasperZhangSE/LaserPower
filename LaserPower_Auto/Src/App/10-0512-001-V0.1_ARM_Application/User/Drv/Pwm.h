@@ -16,8 +16,10 @@ extern "C" {
 #define TIM4_CH3_PWM    1
 #endif  /* TIM4_CH3_PWM */
 
-
-extern TIM_HandleTypeDef s_hTim;
+#define ADUTY0          0
+#define ADUTY25         2500
+#define ADUTY50         5000
+#define ADUTY100        10000
 
 Status_t DrvPwmInit(void);
 Status_t Set_AimLight_Cur(uint16_t light);
