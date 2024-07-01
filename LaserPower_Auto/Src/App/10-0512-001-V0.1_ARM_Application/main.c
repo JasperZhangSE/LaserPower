@@ -12,6 +12,8 @@
     01a, 13Nov23, Karl Created
 */
 
+/* PID : PD24D06-B */
+
 /* Includes */
 #include "Include.h"
     
@@ -54,11 +56,13 @@ int main(void)
     DrvStcInit();
     DrvTimeInit();
     DrvPwmInit();
+    Aht30Init();
     AppCliInit();
     AppDataInit();
     
     AppComInit();
     AppSysInit();
+    
     /* Start scheduler */
     osKernelStart();
 

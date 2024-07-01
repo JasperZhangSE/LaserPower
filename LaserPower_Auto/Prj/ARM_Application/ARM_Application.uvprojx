@@ -1013,6 +1013,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\Src\Lib\UserCommon\I2C\I2C.c</FilePath>
             </File>
+            <File>
+              <FileName>Aht30.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Src\Lib\UserCommon\Aht\Aht30.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

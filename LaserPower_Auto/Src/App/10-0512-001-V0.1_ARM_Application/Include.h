@@ -54,6 +54,7 @@ extern "C" {
 #include "Rtc/Rtc.h"
 #include "Uart/Uart.h"
 #include "Wdog/Wdog.h"
+#include "Aht/Aht30.h"
 
 /* Bsp library */
 #include "BspGpio.h"

@@ -176,6 +176,7 @@ extern "C" {
 #define LASER_EN_Pin            GPIO_PIN_6
 #define LASER_EN_Pin_Port       GPIOC
 
+
 #define BEEP_SW_Pin             GPIO_PIN_13
 #define BEEP_SW_Pin_Port        GPIOC
 

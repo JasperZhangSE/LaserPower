@@ -148,7 +148,6 @@ static GpioCtrl_t s_xGpioOut[] = {
    {EX_AD_EN,       PORT(EX_AD_EN),       PIN(EX_AD_EN),       GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
    {MOD_EN,         PORT(MOD_EN),         IN(MOD_EN),          GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
    {BEEP_SW,        PORT(BEEP_SW),        PIN(BEEP_SW),        GPIO_OFF,      GPIO_MODE_OUTPUT_PP,        GPIO_PULLUP,      GPIO_SPEED_FREQ_HIGH},
-
 };
 
 static GpioCtrl_t s_xGpioIn[] = {

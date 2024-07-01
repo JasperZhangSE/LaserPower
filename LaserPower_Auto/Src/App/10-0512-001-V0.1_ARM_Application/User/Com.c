@@ -1898,6 +1898,7 @@ static Status_t prvUartRecvRs485(uint8_t *pucBuf, uint16_t usLength, void* pvIsr
     }
     return STATUS_OK;
 }
+
 void UART5_IRQHandler(void)
 {
     if (s_xUartRs485) {
