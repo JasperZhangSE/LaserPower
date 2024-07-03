@@ -383,7 +383,7 @@ static void prvSysTask(void* pvPara)
         th_SwInfo = 0x8000;
     }
     else {
-        Time_t xTm = RtcReadTime(RTC_TYPE_DS1302);
+        Time_t xTm = RtcReadTime(RTC_TYPE_DS1338);
         uint32_t ulCurrentTime = mktime(&xTm);
         uint32_t ulExpiredTime = th_TrialStTime + th_TrialDays * 86400;
         if (ulCurrentTime < ulExpiredTime) {
@@ -793,8 +793,6 @@ static bool prvChkMPwr(void)
 static bool prvChkAPwr(void)
 {
     
-    
-    
     if (s_xState.xState != FSM_ERROR) {
         uint16_t s1 = GpioGetInput(APWR1_STAT);
         uint16_t s2 = GpioGetInput(APWR2_STAT);
@@ -926,6 +924,47 @@ static void prvProcManualCtrl(void)
         off = 0;
     }
     
+    /* Manual control enable: on */
+    if (on == 3) {
+        
+    }
+    
+    /* Manual control enable: off */
+    if (off == 3) {
+
+    }
+}
+
+#if 0
+static void prvProcManualCtrl(void)
+{
+    static uint8_t on = 0;
+    static uint8_t off = 0;
+    
+    if (!s_bManualCtrl || !th_ModEn.MANUAL) {
+        return;
+    }
+    
+    if (GpioGetInput(EX_CTRL_EN) == 0) {
+        on++;
+        if (on >= 3) {
+            on = 3;
+        }
+    }
+    else {
+        on = 0;
+    }
+    
+    if (GpioGetInput(EX_CTRL_EN) == 1) {
+        off++;
+        if (off >= 3) {
+            off = 3;
+        }
+    }
+    else {
+        off = 0;
+    }
+    
     /* Manual control: on */
     if (on == 3) {
         State_t *pxState = &s_xState;
@@ -970,6 +1009,7 @@ static void prvProcManualCtrl(void)
         }
     }
 }
+#endif
 
 static void prvProcPanelLed(void)
 {
@@ -1071,7 +1111,7 @@ static void prvProcPanelLed(void)
         (th_ModEn.CHAN3_CUR     && (s_CHAN3_CUR > th_MaxCurAd))            ||
         (th_ModEn.PD            && (s_PD >= th_PdWarnL1))                  ||
         (s_LASER_EN == 1)){
-            
+        
         if (s3 != 0) {
             GpioSetOutput(LED_ALARM_R, LED_ON);
             GpioSetOutput(LED_ALARM_G, LED_OFF);
