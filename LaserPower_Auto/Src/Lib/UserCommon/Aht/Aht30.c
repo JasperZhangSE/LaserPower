@@ -88,20 +88,20 @@
 //#define AHT30_UNLOCK()
 //#endif /* AHT30_RTOS */ 
 
-/* Karl version */
-#if AHT30_RTOS 
-    static osMutexId s_xAht30Mutex;
-    #define AHT30_MUTEX_INIT()    do{ \
-                                    osMutexDef(Aht30Mutex); \
-                                    s_xAht30Mutex = osMutexCreate(osMutex(Aht30Mutex)); \
-                                }while(0)
-    #define AHT30_LOCK()          osMutexWait(s_xAht30Mutex, osWaitForever)
-    #define AHT30_UNLOCK()        osMutexRelease(s_xAht30Mutex)
-#else
-    #define AHT30_MUTEX_INIT()
-    #define AHT30_LOCK()
-    #define AHT30_UNLOCK()
-#endif /* MEM_RTOS */
+///* Karl version */
+//#if AHT30_RTOS 
+//    static osMutexId s_xAht30Mutex;
+//    #define AHT30_MUTEX_INIT()    do{ \
+//                                    osMutexDef(Aht30Mutex); \
+//                                    s_xAht30Mutex = osMutexCreate(osMutex(Aht30Mutex)); \
+//                                }while(0)
+//    #define AHT30_LOCK()          osMutexWait(s_xAht30Mutex, osWaitForever)
+//    #define AHT30_UNLOCK()        osMutexRelease(s_xAht30Mutex)
+//#else
+//    #define AHT30_MUTEX_INIT()
+//    #define AHT30_LOCK()
+//    #define AHT30_UNLOCK()
+//#endif /* MEM_RTOS */
 
 /* local define */
 #define AHT30_I2C_ADDRESS 0x38
@@ -124,7 +124,6 @@ uint8_t aht30_start_data[3] = {0xAC, 0x33, 0x00};
 
 Status_t aht30_init(void)
 {
-    AHT30_MUTEX_INIT();
     return STATUS_OK;
 }
 
@@ -146,7 +145,6 @@ Status_t aht30_read_humiture(int *temperature, uint16_t *humidity)
     TRACE("aht30_read_humiture run\r\n");
 
     osDelay(10);
-    AHT30_LOCK();
     i2c_write_data(AHT30_I2C_ADDRESS, aht30_start_data, 3);
     
     osDelay(100);
@@ -166,7 +164,6 @@ Status_t aht30_read_humiture(int *temperature, uint16_t *humidity)
     if (crc != rx_buffer[6])
     {
         TRACE("i2c read error\r\n");
-        AHT30_UNLOCK();
         return STATUS_ERR;
     }
 
@@ -190,7 +187,6 @@ Status_t aht30_read_humiture(int *temperature, uint16_t *humidity)
                    (((uint32_t)rx_buffer[3]) << 0);                     /* set the humidity */
     humidity_raw = (humidity_raw) >> 4;                                 /* right shift 4 */
     *humidity = (uint8_t)((float)(humidity_raw) / 1048576.0f * 100.0f); /* convert the humidity */
-    AHT30_UNLOCK();
     return STATUS_OK;
 }
 

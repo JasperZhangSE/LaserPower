@@ -58,6 +58,24 @@
 #define ASSERT(...)
 #endif /* I2C_ASSERT */
 
+/* Local defines */
+#if SW_I2C_RTOS
+    #define SW_I2C_MUTEX_INIT()    do{ \
+                                    osMutexDef(I2CMutex); \
+                                    s_xI2CMutex = osMutexCreate(osMutex(I2CMutex)); \
+                                   }while(0)
+    #define SW_I2C_LOCK()          osMutexWait(s_xI2CMutex, osWaitForever)
+    #define SW_I2C_UNLOCK()        osMutexRelease(s_xI2CMutex)
+#else
+    #define SW_I2C_MUTEX_INIT()
+    #define SW_I2C_LOCK()
+    #define SW_I2C_UNLOCK()
+#endif /* SW_I2C_RTOS */
+
+#if SW_I2C_RTOS
+static osMutexId s_xI2CMutex;
+#endif
+
 #if SORTWARE_I2C_ENABLE
 
 static void i2c_delay(void)
@@ -68,6 +86,12 @@ static void i2c_delay(void)
     // for (volatile uint32_t i = 0; i < 3000; i++); // 根据系统频率调整
     osDelay(1);
 #endif
+}
+
+Status_t I2cInit(void)
+{
+    SW_I2C_MUTEX_INIT();
+    return STATUS_OK;
 }
 
 Status_t i2c_start(void)
@@ -277,7 +301,9 @@ Status_t i2c_write_register(uint8_t device_address, uint8_t register_address, ui
     {
         return STATUS_ERR;
     }
-
+    
+    SW_I2C_LOCK();
+    
     /* 发送启动信号 */
     if (i2c_start() != STATUS_OK)
     {
@@ -310,6 +336,9 @@ Status_t i2c_write_register(uint8_t device_address, uint8_t register_address, ui
 
     /* 发送停止信号 */
     i2c_stop();
+    
+    SW_I2C_UNLOCK();
+    
     return STATUS_OK;
 }
 
@@ -318,6 +347,8 @@ Status_t i2c_read_register(uint8_t device_address, uint8_t register_address, uin
     /* 检查空指针 */
     if (!data)
         return STATUS_ERR;
+    
+    SW_I2C_LOCK();
 
     /* 发送启动信号 */
     if (i2c_start() != STATUS_OK)
@@ -374,6 +405,9 @@ Status_t i2c_read_register(uint8_t device_address, uint8_t register_address, uin
 
     /* 发送停止条件 */
     i2c_stop();
+    
+    SW_I2C_UNLOCK();
+    
     return STATUS_OK;
 }
 #endif

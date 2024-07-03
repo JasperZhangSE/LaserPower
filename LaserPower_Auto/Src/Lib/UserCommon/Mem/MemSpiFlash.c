@@ -151,7 +151,7 @@ Flash_Err Spi_Flash_Init()
 
     return result;
 }
-    
+
 Flash_Err Spi_Flash_Term(void)
 {
     /* Do nothing */

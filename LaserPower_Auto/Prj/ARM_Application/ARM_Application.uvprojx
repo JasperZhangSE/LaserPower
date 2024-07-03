@@ -989,6 +989,16 @@
               <FilePath>..\..\Src\Lib\UserCommon\Rbuf\RbufInternal.c</FilePath>
             </File>
             <File>
+              <FileName>I2C.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Src\Lib\UserCommon\I2C\I2C.c</FilePath>
+            </File>
+            <File>
+              <FileName>Aht30.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Src\Lib\UserCommon\Aht\Aht30.c</FilePath>
+            </File>
+            <File>
               <FileName>Rtc.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Src\Lib\UserCommon\Rtc\Rtc.c</FilePath>
@@ -1007,16 +1017,6 @@
               <FileName>Wdog.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Src\Lib\UserCommon\Wdog\Wdog.c</FilePath>
-            </File>
-            <File>
-              <FileName>I2C.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\Src\Lib\UserCommon\I2C\I2C.c</FilePath>
-            </File>
-            <File>
-              <FileName>Aht30.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\Src\Lib\UserCommon\Aht\Aht30.c</FilePath>
             </File>
           </Files>
         </Group>

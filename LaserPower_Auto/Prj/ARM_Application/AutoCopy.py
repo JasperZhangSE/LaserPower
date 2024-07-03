@@ -18,4 +18,4 @@ if __name__ == '__main__':
     dstName = '..\\..\\Tool\\Burn\\Bin\\' + 'App.bin'
     shutil.copy(srcName, dstName)
     dstName = '..\\..\\Tool\\Boot\\UartBootTool\\' + 'App.bin'
-    shutil.copy(srcName, dstName)
+    shutil.copy(srcName, dstName) 

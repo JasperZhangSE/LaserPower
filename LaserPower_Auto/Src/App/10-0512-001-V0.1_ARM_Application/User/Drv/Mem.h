@@ -20,6 +20,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include "Include/Include.h"
+
 /* Defines */
 #ifndef MEM_FLASH_SPI
 #define MEM_FLASH_SPI       SPI3

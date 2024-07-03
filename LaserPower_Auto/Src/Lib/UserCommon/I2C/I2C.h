@@ -45,7 +45,8 @@ extern "C"
 #include "Config.h"
 #include "BspGpio.h"
 
-#define SORTWARE_I2C_ENABLE 1
+#define SORTWARE_I2C_ENABLE     1
+#define SW_I2C_RTOS             1
 
 #if SORTWARE_I2C_ENABLE
 
@@ -67,6 +68,7 @@ extern "C"
 		low = 0
 	} i2c_line_Status_t;
 
+    Status_t I2cInit(void);
 	Status_t i2c_start(void);
 	Status_t i2c_stop(void);
 	Status_t i2c_write_byte(uint8_t data);

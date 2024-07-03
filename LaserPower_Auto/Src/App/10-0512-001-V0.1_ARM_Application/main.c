@@ -56,6 +56,7 @@ int main(void)
     DrvStcInit();
     DrvTimeInit();
     DrvPwmInit();
+    I2cInit();
     Aht30Init();
     AppCliInit();
     AppDataInit();

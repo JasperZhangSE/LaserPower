@@ -59,11 +59,12 @@ extern "C" {
 #define th_LocalNetMask     g_xData.ulLocalNetMask
 #define th_LocalGwAddr      g_xData.ulLocalGwAddr
 #define th_MaxCurAd         g_usMaxCurAd
-#define th_PwmDuty          g_xData.usduty
+#define th_AimLightDuty     g_xData.usAimLightDuty
 #define th_PwrId            g_xData.ucPwrId
 #define th_TrialEn          g_xData.usTrialEn
 #define th_OrderNum         g_xData.ulOrderNum
 #define th_CtrlMode         g_xData.CtrlMode
+#define th_APwmDuty         g_xData.APwmDuty
 
 #define FLASH_DATA_HEAD     (0xA5)
 #define FLASH_SAVE_PAGE1    (1024*64)
@@ -93,10 +94,11 @@ extern "C" {
                                 .ulLocalIp = MAKE_IPADDR(192, 168, 1, 10), \
                                 .ulLocalNetMask = MAKE_IPADDR(255, 255, 255, 0), \
                                 .ulLocalGwAddr = MAKE_IPADDR(192, 168, 1, 1), \
-                                .usduty = 0, \
+                                .usAimLightDuty = 60, \
                                 .ucPwrId = "12345678901234", \
                                 .ulOrderNum = 0001, \
                                 .CtrlMode = 1 /* 1: Internal dac; 2: Pwm; 3: External AD */, \
+                                .APwmDuty = 50, \
                                 .ucCrc  = 0 \
                             }
 #endif /* APP_DATA_INIT */
@@ -144,10 +146,11 @@ typedef struct {
     uint32_t ulLocalIp;      /* Local IP address */
     uint32_t ulLocalNetMask; /* Local net mask */
     uint32_t ulLocalGwAddr;  /* Local gateway address */
-    uint16_t usduty;         /* Pwm duty */
+    uint16_t usAimLightDuty; /* Pwm duty */
     char  ucPwrId[20];       /* Pwr ID */ /* Use uint8_t will warnning */
     uint32_t ulOrderNum;     /* Order Number  */
     uint16_t CtrlMode;       /* Laser control mode */
+    uint16_t APwmDuty;       /* Constant flow source pwm duty */
     uint8_t  ucCrc;          /* Check code */
 }Data_t;
 #pragma pack(pop)

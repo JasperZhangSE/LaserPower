@@ -27,7 +27,7 @@
 #include "Include.h"
 
 /* Debug config */
-#if DATA_DEBUG
+#if DATA_DEBUG || 1
     #undef TRACE
     #define TRACE(...)  DebugPrintf(__VA_ARGS__)
 #else
@@ -196,7 +196,8 @@ static void prvCliCmdCfgShow(cli_printf cliprintf, int argc, char** argv)
     cliprintf("Ip       : %s\n", ipaddr_ntoa((const ip_addr_t*)&(th_LocalIp)));
     cliprintf("NetMask  : %s\n", ipaddr_ntoa((const ip_addr_t*)&(th_LocalNetMask)));
     cliprintf("GwAddr   : %s\n", ipaddr_ntoa((const ip_addr_t*)&(th_LocalGwAddr)));
-    cliprintf("PWMDuty  : %d\n", th_PwmDuty);
+    cliprintf("AimDuty  : %d %%\n", th_AimLightDuty);
+    cliprintf("APwrDuty : %d %%\n", th_APwmDuty);
     cliprintf("CtrlMode : %d\n", th_CtrlMode);
 
 }
@@ -519,7 +520,7 @@ static void prvCliCmdPwmCtrl(cli_printf cliprintf, int argc, char** argv)
     CHECK_CLI();
     
      if (argc != 2) {
-        cliprintf("cfg_set_pwm_duty DUTY\n");
+        cliprintf("cfg_set_aim_pwm_duty DUTY\n");
         return;
     }
     
@@ -528,9 +529,9 @@ static void prvCliCmdPwmCtrl(cli_printf cliprintf, int argc, char** argv)
     duty = atoi(argv[1]);
     if (duty >= 0 && duty <= 100)
     {
-        th_PwmDuty = (uint16_t)duty;
+        th_AimLightDuty = (uint16_t)duty;
         DataSaveDirect();
-        //Set_AimLight_Cur(th_PwmDuty);
+        Set_AimLight_Cur(th_AimLightDuty);
         cliprintf("ok, recheck the config by cfg_show command\n");
     }
     else
@@ -539,7 +540,34 @@ static void prvCliCmdPwmCtrl(cli_printf cliprintf, int argc, char** argv)
         cliprintf("    duty: 0 - 100\n");
     }
 }
-CLI_CMD_EXPORT(cfg_set_pwm_duty, set pwm duty, prvCliCmdPwmCtrl)
+CLI_CMD_EXPORT(cfg_set_aim_pwm_duty, set pwm duty, prvCliCmdPwmCtrl)
+
+static void prvCliCmdAPwmCtrl(cli_printf cliprintf, int argc, char** argv)
+{
+    CHECK_CLI();
+    
+     if (argc != 2) {
+        cliprintf("cfg_set_a_pwm_duty DUTY\n");
+        return;
+    }
+    
+    int duty = 0;
+    
+    duty = atoi(argv[1]);
+    if (duty >= 0 && duty <= 100)
+    {
+        th_APwmDuty = (uint16_t)duty;
+        DataSaveDirect();
+        SetADuty(th_AimLightDuty * 100);
+        cliprintf("ok, recheck the config by cfg_show command\n");
+    }
+    else
+    {
+        cliprintf("\r\n");
+        cliprintf("    duty: 0 - 100\n");
+    }
+}
+CLI_CMD_EXPORT(cfg_set_a_pwm_duty, set A pwm duty, prvCliCmdAPwmCtrl)
 
 static void prvCliCmdCfgSetPwrId(cli_printf cliprintf, int argc, char** argv)
 {
@@ -584,12 +612,20 @@ static void prvCliCmdCfgSetCtrlMode(cli_printf cliprintf, int argc, char** argv)
     
     uint16_t mode = atoi(argv[1]);
     
-    th_CtrlMode = (mode >= 1 && mode <= 3) ? mode : 1;
+//    th_CtrlMode = (mode >= 1 && mode <= 3) ? mode : 1;
+    if (mode < 1 || mode > 3){
+        cliprintf("cfg_set_ctrl_mode CTRL_MODE(1:DAC; 2:PWM; 3:AD)\n");
+        return;
+    }
+    
+    th_CtrlMode = mode;
     
     DataSaveDirect();
     cliprintf("ok, recheck the config by cfg_show command\n");
 }
 CLI_CMD_EXPORT(cfg_set_ctrl_mode, set ctrl mode, prvCliCmdCfgSetCtrlMode)
+
+
 
 static void Data_test(cli_printf cliprintf, int argc, char** argv)
 {

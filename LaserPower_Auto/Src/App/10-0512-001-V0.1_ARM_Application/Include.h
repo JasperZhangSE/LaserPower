@@ -51,10 +51,11 @@ extern "C" {
 #include "Net/Net.h"
 #include "Prot/Prot.h"
 #include "Rbuf/Rbuf.h"
+#include "I2c/I2c.h"
+#include "Aht/Aht30.h"
 #include "Rtc/Rtc.h"
 #include "Uart/Uart.h"
 #include "Wdog/Wdog.h"
-#include "Aht/Aht30.h"
 
 /* Bsp library */
 #include "BspGpio.h"
@@ -82,7 +83,6 @@ extern "C" {
 #include "User/Com.h"
 #include "User/Data.h"
 #include "User/Sys.h"
-
 
 #ifdef __cplusplus
 }

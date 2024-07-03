@@ -60,6 +60,7 @@
 #if MEM_RTOS
 static osMutexId s_xMemMutex;
 #endif /* MEM_RTOS */
+
 static Bool_t s_bMutexInit = FALSE;
 
 /* Functions */

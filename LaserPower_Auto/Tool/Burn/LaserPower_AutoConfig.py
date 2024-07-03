@@ -63,7 +63,7 @@ def ConfigInfo(comPort,pwrType,realTime):
     strResp += CliExec(comPort, "cfg_set_mod_en 8  1")  # WATER_PRESS
     strResp += CliExec(comPort, "cfg_set_mod_en 9  1")  # WATER_CHILLER
     strResp += CliExec(comPort, "cfg_set_mod_en 10 1")  # CHAN_CTRL
-    strResp += CliExec(comPort, "cfg_set_pwm_duty 50") 
+    strResp += CliExec(comPort, "cfg_set_a_pwm_duty 50") 
 
     strResp += CliExec(comPort, "cfg_show")
     return strResp
