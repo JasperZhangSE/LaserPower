@@ -23,16 +23,25 @@ extern "C" {
 #include <time.h>
 #include <stdint.h>
 
-/* Types */
-typedef enum {
-    STATUS_OK,
-    STATUS_ERR
-}Status_t;
+// extern struct tm {
+//     int tm_sec;
+//     int tm_min;
+//     int tm_hour;
+//     int tm_mday;
+//     int tm_mon;
+//     int tm_year;
+//     int tm_wday;
+//     int tm_yday;
+//     int tm_isdst;
+// };
 
-typedef uint8_t Bool_t;
+/* Types */
+typedef enum { STATUS_OK, STATUS_ERR } Status_t;
+
+typedef uint8_t   Bool_t;
 typedef struct tm Time_t;
 
-typedef int SOCKET;
+typedef int       SOCKET;
 
 #ifdef __cplusplus
 }

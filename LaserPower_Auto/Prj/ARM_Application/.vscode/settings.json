@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "include.h": "c",
+        "config.h": "c",
+        "esp32c3.h": "c",
+        "stdint.h": "c"
+    }
+}

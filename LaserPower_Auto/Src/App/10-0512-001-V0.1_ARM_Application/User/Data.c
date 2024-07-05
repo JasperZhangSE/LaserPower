@@ -164,11 +164,11 @@ static void prvCliCmdCfgShow(cli_printf cliprintf, int argc, char** argv)
     
     cliprintf("PwrId    : %s\n", th_PwrId);
     cliprintf("OrderNum : %d\n", th_OrderNum);
-    cliprintf("OtWarn   : %.1f ¡æ [%d]\n", AdcToTemp(th_OtWarnTh) * 0.1, th_OtWarnTh);
-    cliprintf("OtCut    : %.1f ¡æ [%d]\n", AdcToTemp(th_OtCutTh) * 0.1, th_OtCutTh);
+    cliprintf("OtWarn   : %.1f 'C [%d]\n", AdcToTemp(th_OtWarnTh) * 0.1, th_OtWarnTh);
+    cliprintf("OtCut    : %.1f 'C [%d]\n", AdcToTemp(th_OtCutTh) * 0.1, th_OtCutTh);
     cliprintf("MaxCur   : %.1f A [%d]\n", th_MaxCur * 0.1, th_MaxCur);
     cliprintf("WorkCur  : %.1f A [%d]\n", th_WorkCur * 0.1, th_WorkCur);
-    cliprintf("CompRate : %d¡ë [%d]\n", th_CompRate, th_CompRate);
+    cliprintf("CompRate : %d %%. [%d]\n", th_CompRate, th_CompRate);
     cliprintf("PdWarnL1 : %d mV [%d]\n", th_PdWarnL1 * 3300 / 4096, th_PdWarnL1);
     cliprintf("PdWarnL2 : %d mV [%d]\n", th_PdWarnL2 * 3300 / 4096, th_PdWarnL2);
     cliprintf("AdVolPara: %.3f [%d]\n", th_AdVolPara * 0.001, th_AdVolPara);

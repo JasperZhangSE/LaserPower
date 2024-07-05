@@ -19,12 +19,10 @@
 extern "C" {
 #endif /*__cplusplus */
 
-#define RUN_WITH_BOOTLOADER     1
-#define SW_VER                  0xFF010000
+#define RUN_WITH_BOOTLOADER 1
+#define SW_VER              0xFF010000
 
-#define ENABLE_SYS_AUTO         1
-
-#define REMAP_GPIO_LED_CTRL     0
+#define REMAP_GPIO_LED_CTRL 0
 
 #ifdef __cplusplus
 }

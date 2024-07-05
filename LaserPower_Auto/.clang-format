@@ -1,0 +1,221 @@
+Language: Cpp
+
+# 基于的编码规范, 可选:
+# - LLVM: https://llvm.org/docs/CodingStandards.html
+# - Google: https://google.github.io/styleguide/cppguide.html
+# - Chromium: https://chromium.googlesource.com/chromium/src/+/refs/heads/main/styleguide/styleguide.md
+# - Mozilla: https://firefox-source-docs.mozilla.org/code-quality/coding-style/index.html
+# - WebKit: https://www.webkit.org/coding/coding-style.html
+# - Microsoft: https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-code-style-settings-reference
+# - GNU: https://www.gnu.org/prep/standards/standards.html
+# - InheritParentConfig: 继承父目录的编码规范, 如果有的话, 不是一个真正的编码规范
+# - None: 不使用, 即自动配置, 也就是本文件中的自定义内容
+BasedOnStyle: Google
+
+# 访问声明符缩进
+AccessModifierOffset: -4
+
+# 开括号后的对齐(包括小括号/大括号/尖括号)
+AlignAfterOpenBracket: Align
+
+# 结构体数组统一初始化对齐
+AlignArrayOfStructures: None
+
+# 连续赋值语句的对齐
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: false
+  AlignCompound: true
+  PadOperators: true
+
+# 连续位定义语句的对齐
+AlignConsecutiveBitFields:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+  AlignCompound: true
+  PadOperators: true
+
+# 连续声明语句的对齐
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: false
+  AlignCompound: true
+  PadOperators: true
+
+# 连续宏定义语句的对齐
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+  AlignCompound: true
+  PadOperators: true
+
+# 续行符对齐
+AlignEscapedNewlines: Right
+
+# 括号不换行
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# 在二元/一元表达式中的操作数对齐
+AlignOperands: Align
+AlignTrailingComments: true
+
+# 允许短的函数、lambda等放在同一行
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortEnumsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortLambdasOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# 二元操作符前是否换行
+BreakBeforeBinaryOperators: None
+
+# 概念声明前是否换行
+BreakBeforeConceptDeclarations: Always
+
+# 大括号换行风格
+BreakBeforeBraces: Custom
+
+# 继承列表括号前换行
+BreakBeforeInheritanceComma: false
+
+# 继承列表换行风格
+BreakInheritanceList: BeforeColon
+BreakBeforeTernaryOperators: true
+
+# 构造函数初始化列表换行风格
+BreakConstructorInitializersBeforeComma: false
+BreakConstructorInitializers: BeforeComma
+
+# 字面字符串是否换行
+BreakStringLiterals: false
+
+# 代码列字符上限
+ColumnLimit: 120
+
+# 注释关键字对齐
+QualifierAlignment: Leave
+
+# 构造函数初始化列表缩进
+ConstructorInitializerIndentWidth: 0
+
+# 函数调用续行对齐
+ContinuationIndentWidth: 4
+
+# C++11的统一初始化列表大括号风格
+Cpp11BracedListStyle: true
+
+# 提取行结束符并标准化
+DeriveLineEnding: true
+
+# 是否开启文件分析
+DerivePointerAlignment: false
+
+# 是否强制在namespace结尾增加 // namespace xxx
+FixNamespaceComments: true
+ShortNamespaceLines: 0
+
+# Include代码块操作, 前提是SortIncludes开启
+IncludeBlocks: Preserve
+
+# Include Sort选项
+SortIncludes: Never
+
+# Include种类
+IncludeCategories:
+  - Regex: '^"(llvm|llvm-c|clang|clang-c)/'
+    Priority: 2
+    SortPriority: 0
+    CaseSensitive: false
+  - Regex: '^(<|"(gtest|gmock|isl|json)/)'
+    Priority: 3
+    SortPriority: 0
+    CaseSensitive: false
+  - Regex: '.*'
+    Priority: 1
+    SortPriority: 0
+    CaseSensitive: false
+
+# 缩进访问控制
+IndentAccessModifiers: false
+IndentCaseLabels: false
+IndentCaseBlocks: true
+IndentGotoLabels: true
+
+# 预处理指示(PPD)缩进
+IndentPPDirectives: None
+
+# extern "C"缩进
+IndentExternBlock: AfterExternBlock
+
+# 缩进宽度
+IndentWidth: 4
+
+# 函数名换行时是否缩进
+IndentWrappedFunctionNames: false
+
+# 是否在代码块中强制插入大括号
+InsertBraces: true
+
+# 是否强制插入拖尾的','
+InsertTrailingCommas: None
+
+# 是否保持空行
+MaxEmptyLinesToKeep: 1
+
+# Namespace内的对齐
+NamespaceIndentation: None
+
+# 罚分设定
+PenaltyBreakAssignment: 2
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 300
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakOpenParenthesis: 0
+PenaltyBreakString: 1000
+PenaltyBreakTemplateDeclaration: 10
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 60
+PenaltyIndentedWhitespace: 0
+
+# 指针对齐
+PointerAlignment: Right
+
+# 引用对齐
+ReferenceAlignment: Pointer
+
+# 预处理对齐宽度
+PPIndentWidth: -1
+
+# 是否允许clang-format尝试重新粘合注释
+ReflowComments: false
+
+# 是否移除多余的{}
+RemoveBracesLLVM: false
+
+# 模板中的require语句位置
+RequiresClausePosition: OwnLine
