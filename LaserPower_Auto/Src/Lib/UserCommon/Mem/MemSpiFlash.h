@@ -167,7 +167,7 @@ typedef struct {
 
 /* FLASH信息表 */
 static const Flash_Chip flash_chip_table[] = {
-    /* 制造商ID        类型ID     容量ID   容量                写模式                      擦除粗粒度     擦除命令 */    
+    /* 制造商ID         类型ID      容量ID         容量              写模式                擦除粗粒度       擦除命令 */    
     {MF_ID_ATMEL,       0x26,       0x00,   2 * 1024 * 1024,    WM_BYTE | WM_DUAL_BUFFER,   512,            0x81},      /* AT45DB161E */
     {MF_ID_WINBOND,     0x40,       0x13,   512 * 1024,         WM_PAGE_256B,               4096,           0x20},      /* W25Q40BV */
     {MF_ID_SST,         0x25,       0x41,   2 * 1024 * 1024,    WM_BYTE | WM_AAI,           4096,           0x20},      /* SST25VF016B */

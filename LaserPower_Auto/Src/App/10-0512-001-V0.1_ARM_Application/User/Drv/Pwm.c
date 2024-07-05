@@ -77,13 +77,13 @@ Status_t ToggleAimLight(uint16_t OnOff) {
     return STATUS_OK;
 }
 
-Status_t Set_AimLight_Cur(uint16_t light) {
+Status_t SetAinLightCur(uint16_t light) {
     __HAL_TIM_SET_COMPARE(&s_hTim1, TIM_CHANNEL_1, light);
 
     return STATUS_OK;
 }
 
-Status_t ToggleAStatus(uint16_t OnOff) {
+Status_t ToggleCcsStatus(uint16_t OnOff) {
     if (OnOff == 1) {
         HAL_TIM_PWM_Start(&s_hTim2, TIM_CHANNEL_3);
     }
@@ -103,14 +103,14 @@ Status_t SetAFreq(uint16_t Freq) {
         return STATUS_ERR;
     }
 
-    uint32_t ulPsc = 72000000 / (Freq * ((TIM4->CCR3) + 1)) - 1;
+    uint32_t ulPsc = 72000000 / (Freq * ((10000 * th_APwmDuty / 100) + 1)) - 1;
     __HAL_TIM_SET_PRESCALER(&s_hTim2, ulPsc);
 
     TRACE("%d\n", TIM4->PSC);
     return STATUS_OK;
 }
 
-static void prvCliCmdSetAFreq(cli_printf cliprintf, int argc, char **argv) {
+static void prvCliCmdSetCcsPwf(cli_printf cliprintf, int argc, char **argv) {
     CHECK_CLI();
 
     if (argc != 2) {
@@ -124,46 +124,5 @@ static void prvCliCmdSetAFreq(cli_printf cliprintf, int argc, char **argv) {
 
     SetAFreq(usFreq);
 }
-CLI_CMD_EXPORT(set_a_freq, set Tim4 ch3 pwm freq, prvCliCmdSetAFreq)
+CLI_CMD_EXPORT(set_ccs_pwf, set Tim4 ch3 (constant wave frequency) pwm frequency, prvCliCmdSetCcsPwf)
 
-#if 0
-void TIM4_IRQHandler() {
-
-    if (s_bSysLed) {
-        if (breathing_up) {
-            light++;
-            if (light >= 100) {
-                breathing_up = 0; 
-            }
-        } else {
-            light--;
-            if (light <= 0) {
-                breathing_up = 1; 
-            }
-        }
-        Set_SysLed_Light(light);
-    }
-    else
-    {
-        Set_SysLed_Light(0);
-    }
-
-    HAL_TIM_IRQHandler(&s_hTim2);
-}
-
-static void prvCliCmdSysLed(cli_printf cliprintf, int argc, char** argv)
-{
-    CHECK_CLI();
-    
-    if (argc != 2) {
-        cliprintf("sys_led ON_OFF\n");
-        return;
-    }
-    
-    uint16_t usSw = atoi(argv[1]);
-    
-    usSw ? (s_bSysLed = true) : (s_bSysLed = false);
-    
-}
-CLI_CMD_EXPORT(sys_led, enable manual ctrl, prvCliCmdSysLed)
-#endif

@@ -55,7 +55,7 @@ static Bool_t s_bEnCli = FALSE;
 #else
 static Bool_t s_bEnCli = TRUE;
 #endif /* CLI_ENABLE_SECURITY */
-static const char   *s_cConfigMark = "Master!23";
+static const char   *s_cConfigMark = "admin";
 static CliUartCtrl_t s_xCliUartCtrl;
 
 /* Functions */

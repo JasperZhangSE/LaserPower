@@ -191,6 +191,9 @@ static void prvCliCmdCfgShow(cli_printf cliprintf, int argc, char** argv)
     cliprintf("         : WATER_PRESS   - %d\n", th_ModEn.WATER_PRESS);
     cliprintf("         : WATER_CHILLER - %d\n", th_ModEn.WATER_CHILLER);
     cliprintf("         : CHAN_CTRL     - %d\n", th_ModEn.CHAN_CTRL);
+    cliprintf("CVS      : %d\n", th_CVS);
+    cliprintf("CCS      : %d\n", th_CCS);
+    cliprintf("\n");
     cliprintf("Dhcp     : %d\n", th_Dhcp);
     cliprintf("DhcpCnt  : %d\n", th_DhcpTimeout);
     cliprintf("Ip       : %s\n", ipaddr_ntoa((const ip_addr_t*)&(th_LocalIp)));
@@ -199,7 +202,6 @@ static void prvCliCmdCfgShow(cli_printf cliprintf, int argc, char** argv)
     cliprintf("AimDuty  : %d %%\n", th_AimLightDuty);
     cliprintf("APwrDuty : %d %%\n", th_APwmDuty);
     cliprintf("CtrlMode : %d\n", th_CtrlMode);
-
 }
 CLI_CMD_EXPORT(cfg_show, show config parameters, prvCliCmdCfgShow)
 
@@ -531,7 +533,7 @@ static void prvCliCmdPwmCtrl(cli_printf cliprintf, int argc, char** argv)
     {
         th_AimLightDuty = (uint16_t)duty;
         DataSaveDirect();
-        Set_AimLight_Cur(th_AimLightDuty);
+        SetAinLightCur(th_AimLightDuty);
         cliprintf("ok, recheck the config by cfg_show command\n");
     }
     else
@@ -625,6 +627,51 @@ static void prvCliCmdCfgSetCtrlMode(cli_printf cliprintf, int argc, char** argv)
 }
 CLI_CMD_EXPORT(cfg_set_ctrl_mode, set ctrl mode, prvCliCmdCfgSetCtrlMode)
 
+static void prvCliCmdCfgSetCvs(cli_printf cliprintf, int argc, char** argv)
+{
+    CHECK_CLI();
+    
+    if (argc != 2) {
+        cliprintf("cfg_set_cvs EN\n");
+        return;
+    }
+    
+    uint16_t en = atoi(argv[1]);
+    
+    if (en == 0) {
+        th_CVS = 0;
+    }
+    else {
+        th_CVS = 1;
+    }
+    
+    DataSaveDirect();
+    cliprintf("ok, recheck the config by cfg_show command\n");
+}
+CLI_CMD_EXPORT(cfg_set_cvs, set cvs en, prvCliCmdCfgSetCvs)
+
+static void prvCliCmdCfgSetCcs(cli_printf cliprintf, int argc, char** argv)
+{
+    CHECK_CLI();
+    
+    if (argc != 2) {
+        cliprintf("cfg_set_cvs EN\n");
+        return;
+    }
+    
+    uint16_t en = atoi(argv[1]);
+    
+    if (en == 0) {
+        th_CCS = 0;
+    }
+    else {
+        th_CCS = 1;
+    }
+    
+    DataSaveDirect();
+    cliprintf("ok, recheck the config by cfg_show command\n");
+}
+CLI_CMD_EXPORT(cfg_set_ccs, set ccs en, prvCliCmdCfgSetCcs)
 
 
 static void Data_test(cli_printf cliprintf, int argc, char** argv)

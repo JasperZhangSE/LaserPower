@@ -57,67 +57,67 @@
 #endif /* SYS_ASSERT */
 
 /* Local defines */
-#define SYS_SAVELASTSTATES() pxState->xLastState = pxState->xState;
-#define SYS_TICK_GET()       osKernelSysTick()
-#define LED_ALARM_R          LED1
-#define LED_ALARM_G          LED2
-#define LED_ACTIVE_R         LED3
-#define LED_ACTIVE_G         LED4
-#define LED_POWER_R          LED5
-#define LED_POWER_G          LED6
-#define LED_ON               1
-#define LED_OFF              0
-#define MPWR_DC_OK           1
-#define MPWR_AC_OK           1
-#define MPWR_ON              1
-#define MPWR_OFF             0
-#define APWR_OK              1
-#define APWR_ON              1
-#define APWR_OFF             0
-#define LED_CTRL_ON          1
-#define LED_CTRL_OFF         0
-#define QBH_ON_ON            0
-#define QBH_ON_OFF           1
-#define WATER_PRESS_ON       0
-#define WATER_PRESS_OFF      1
-#define WATER_CHILLER_ON     0
-#define WATER_CHILLER_OFF    1
+#define SYS_SAVELASTSTATES()  pxState->xLastState = pxState->xState;
+#define SYS_TICK_GET()        osKernelSysTick()
+#define LED_ALARM_R           LED1
+#define LED_ALARM_G           LED2
+#define LED_ACTIVE_R          LED3
+#define LED_ACTIVE_G          LED4
+#define LED_POWER_R           LED5
+#define LED_POWER_G           LED6
+#define LED_ON                1
+#define LED_OFF               0
+#define MPWR_DC_OK            1
+#define MPWR_AC_OK            1
+#define MPWR_ON               1
+#define MPWR_OFF              0
+#define APWR_OK               1
+#define APWR_ON               1
+#define APWR_OFF              0
+#define LED_CTRL_ON           1
+#define LED_CTRL_OFF          0
+#define QBH_ON_ON             0
+#define QBH_ON_OFF            1
+#define WATER_PRESS_ON        0
+#define WATER_PRESS_OFF       1
+#define WATER_CHILLER_ON      0
+#define WATER_CHILLER_OFF     1
 
 /* Forward declaration */
-static void prvSysTask(void *pvPara);
-static void prvDaemonTask(void *pvPara);
+static void prvSysTask        (void *pvPara);
+static void prvDaemonTask     (void *pvPara);
 
 /* State machine */
-static void prvProc(void);
-static void prvFsmStart(State_t *pxState);
-static void prvFsmInitMpwr(State_t *pxState);
-static void prvFsmReady(State_t *pxState);
-static void prvFsmIdle(State_t *pxState);
-static void prvFsmLaserSInit(State_t *pxState);
-static void prvFsmLaserSRun(State_t *pxState);
-static void prvFsmLaserSDone(State_t *pxState);
-static void prvFsmLaserMInit(State_t *pxState);
-static void prvFsmLaserMRun(State_t *pxState);
-static void prvFsmLaserMDone(State_t *pxState);
+static void prvProc           (void);
+static void prvFsmStart       (State_t *pxState);
+static void prvFsmInitMpwr    (State_t *pxState);
+static void prvFsmReady       (State_t *pxState);
+static void prvFsmIdle        (State_t *pxState);
+static void prvFsmLaserSInit  (State_t *pxState);
+static void prvFsmLaserSRun   (State_t *pxState);
+static void prvFsmLaserSDone  (State_t *pxState);
+static void prvFsmLaserMInit  (State_t *pxState);
+static void prvFsmLaserMRun   (State_t *pxState);
+static void prvFsmLaserMDone  (State_t *pxState);
 static void prvFsmInfraredInit(State_t *pxState);
-static void prvFsmInfraredRun(State_t *pxState);
+static void prvFsmInfraredRun (State_t *pxState);
 static void prvFsmInfraredDone(State_t *pxState);
-static void prvFsmError(State_t *pxState);
+static void prvFsmError       (State_t *pxState);
 
 /* Help functions */
-static bool prvInitChkMPwr(void);
-static bool prvChkPwr(void);
-static bool prvChkMPwr(void);
-static bool prvChkAPwr(void);
-static void prvEnterFsm(void);
-static void prvProcManualCtrl(void);
-static void prvProcPanelLed(void);
+static bool prvInitChkMPwr    (void);
+static bool prvChkPwr         (void);
+static bool prvChkMPwr        (void);
+static bool prvChkAPwr        (void);
+static void prvEnterFsm       (void);
+static void prvProcManualCtrl (void);
+static void prvProcPanelLed   (void);
 
 /* Global variables */
-State_t    *g_pxState = NULL;
+State_t    *g_pxState     = NULL;
+uint8_t     g_ucVerChk    = 0;
+uint16_t    g_usSwInfo    = 0x0000;
 SysStatus_t g_xSysStatus;
-uint8_t     g_ucVerChk = 0;
-uint16_t    g_usSwInfo = 0x0000;
 
 /* Local variables */
 static State_t  s_xState;
@@ -141,7 +141,7 @@ Status_t AppSysInit(void) {
 
     DrvPwrInit();
 
-    Set_AimLight_Cur(th_AimLightDuty);
+    SetAinLightCur(th_AimLightDuty);
 
     memset(&s_xState, 0, sizeof(s_xState));
     g_pxState        = &s_xState;
@@ -160,7 +160,7 @@ Status_t AppSysInit(void) {
         GpioSetOutput(MOD_EN, 0);
         GpioSetOutput(EX_AD_EN, 0);
         SetADuty(100);
-        ToggleAStatus(1);
+        ToggleCcsStatus(1);
         break;
 
     /* PWM Mode */
@@ -169,7 +169,7 @@ Status_t AppSysInit(void) {
         GpioSetOutput(EX_AD_EN, 0);
         DacSet(APWR1_CTRL, CUR_TO_DAC(450 / 10.f));
         SetADuty(0);
-        ToggleAStatus(1);
+        ToggleCcsStatus(1);
         break;
 
     /* AD Mode */
@@ -256,7 +256,9 @@ Status_t LaserOff(uint32_t ulSelect) {
                 pxState->xState    = FSM_LASERs_DONE;
                 pxState->ulCounter = 0;
                 TRACE("[%6d] LaserSRun    -> LaserSDone\n", SYS_TICK_GET());
+                
             }
+            
             GpioSetOutput(APWR1_EN, s_ucAPwrCtrl1);
             GpioSetOutput(APWR2_EN, s_ucAPwrCtrl2);
             GpioSetOutput(APWR3_EN, s_ucAPwrCtrl3);
@@ -320,14 +322,12 @@ Status_t LaserOff(uint32_t ulSelect) {
                 SetADuty(0);
             }
 
-            TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl1,
-                  DAC_TO_CUR(DacGet(APWR1_CTRL)), DAC_TO_MVOL(DacGet(APWR1_CTRL)));
-
-            TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl2,
-                  DAC_TO_CUR(DacGet(APWR2_CTRL)), DAC_TO_MVOL(DacGet(APWR2_CTRL)));
-
-            TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl3,
-                  DAC_TO_CUR(DacGet(APWR3_CTRL)), DAC_TO_MVOL(DacGet(APWR3_CTRL)));
+            TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%d Hz), Duty( %d  %%)\n", SYS_TICK_GET(), s_ucAPwrCtrl1,
+                      PSC_TO_CUR(TIM4->PSC), PSC_TO_HZ(TIM4->PSC), TIM4->CCR3);
+            TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%d Hz), Duty( %d  %%)\n", SYS_TICK_GET(), s_ucAPwrCtrl2,
+                      PSC_TO_CUR(TIM4->PSC), PSC_TO_HZ(TIM4->PSC), TIM4->CCR3);
+            TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%d Hz), Duty( %d  %%)\n", SYS_TICK_GET(), s_ucAPwrCtrl3,
+                      PSC_TO_CUR(TIM4->PSC), PSC_TO_HZ(TIM4->PSC), TIM4->CCR3);
 
             return STATUS_OK;
         }
@@ -571,8 +571,10 @@ static void prvFsmLaserSInit(State_t *pxState) {
             GpioSetOutput(APWR2_EN, s_ucAPwrCtrl2);
             GpioSetOutput(APWR3_EN, s_ucAPwrCtrl3);
             if (s_ucAPwrCtrl1 == APWR_ON) {
+                TRACE("FREQ  %d Hz\n", CUR_TO_FREQ(s_ulCurrent));
                 SetAFreq(CUR_TO_FREQ(s_ulCurrent));
                 SetADuty(50);
+                TRACE("TIM4->PSC  %d\n", TIM4->PSC);
             }
             if (s_ucAPwrCtrl2 == APWR_ON) {
                 SetAFreq(CUR_TO_FREQ(s_ulCurrent));
@@ -586,13 +588,14 @@ static void prvFsmLaserSInit(State_t *pxState) {
                 pxState->xState         = FSM_LASERs_RUN;
                 pxState->ulCounter      = 0;
                 th_SysStatus.WORK_LASER = 1;
+                
                 TRACE("[%6d] LaserSInit   -> LaserSRun\n", SYS_TICK_GET());
-                TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%d %%)\n", SYS_TICK_GET(), s_ucAPwrCtrl1,
-                      FREQ_TO_CUR(TIM4->PSC), TIM4->CCR3);
-                TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%d %%)\n", SYS_TICK_GET(), s_ucAPwrCtrl2,
-                      FREQ_TO_CUR(TIM4->PSC), TIM4->CCR3);
-                TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%d %%)\n", SYS_TICK_GET(), s_ucAPwrCtrl3,
-                      FREQ_TO_CUR(TIM4->PSC), TIM4->CCR3);
+                TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%d Hz), Duty( %d  %%)\n", SYS_TICK_GET(), s_ucAPwrCtrl1,
+                      PSC_TO_CUR(TIM4->PSC), PSC_TO_HZ(TIM4->PSC), TIM4->CCR3);
+                TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%d Hz), Duty( %d  %%)\n", SYS_TICK_GET(), s_ucAPwrCtrl2,
+                      PSC_TO_CUR(TIM4->PSC), PSC_TO_HZ(TIM4->PSC), TIM4->CCR3);
+                TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%d Hz), Duty( %d  %%)\n", SYS_TICK_GET(), s_ucAPwrCtrl3,
+                      PSC_TO_CUR(TIM4->PSC), PSC_TO_HZ(TIM4->PSC), TIM4->CCR3);
 #if 0
                     for (uint8_t n = 0; n < 5; n++) {
                         Status_t r = PwrOutput(1);
@@ -778,6 +781,10 @@ static bool prvChkPwr(void) {
 }
 
 static bool prvChkMPwr(void) {
+    if (th_CVS == 0) {
+        return true;
+    }
+    
     int32_t  v  = PwrDataGet(PWR2_M1_ADDR, PWR_OUTPUT_VOL);
     uint16_t s1 = GpioGetInput(MPWR1_STAT_AC);
     uint16_t s2 = GpioGetInput(MPWR1_STAT_DC);
@@ -785,6 +792,12 @@ static bool prvChkMPwr(void) {
 }
 
 static bool prvChkAPwr(void) {
+    
+    if (th_CCS == 0) {
+        /* Don't check ccs */
+        return true;
+    }
+    
     if (s_xState.xState != FSM_ERROR) {
         uint16_t s1 = GpioGetInput(APWR1_STAT);
         uint16_t s2 = GpioGetInput(APWR2_STAT);
@@ -1143,15 +1156,17 @@ CLI_CMD_EXPORT(show_sys_status, show system status, prvCliCmdShowSysStatus)
 static void prvCliCmdFsmTest(cli_printf cliprintf, int argc, char **argv) {
     CHECK_CLI();
 
-    if (argc != 2) {
-        cliprintf("fsm_goto ID\n");
+    if (argc != 3) {
+        cliprintf("fsm_goto ID Cur\n");
         return;
     }
 
     int Step = atoi(argv[1]);
+    int Cur  = atoi(argv[2]);
+    
     switch (Step) {
     case 1:
-        if (LaserOn(300, 0x07) == STATUS_ERR) {
+        if (LaserOn(Cur*10, 0x07) == STATUS_ERR) {
             TRACE("LaserOn Error\n");
         }
         break;
@@ -1183,4 +1198,4 @@ static void prvCliCmdFsmTest(cli_printf cliprintf, int argc, char **argv) {
         break;
     }
 }
-CLI_CMD_EXPORT(fsm_goto, test system fsm process, prvCliCmdFsmTest)
+CLI_CMD_EXPORT(sys_fsm_goto, test system fsm process, prvCliCmdFsmTest)

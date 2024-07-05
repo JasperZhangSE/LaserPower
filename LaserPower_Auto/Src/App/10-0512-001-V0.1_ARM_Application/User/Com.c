@@ -234,8 +234,8 @@ static Status_t prvUartRecv(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara)
 static void     prvCliUartPrintf(const char *cFormat, ...);
 
 #if ENABLE_WIFI_MOUDLE
-static Status_t prvUartRecvWifi(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara);
-static Status_t prvWifiSendCmd(uint8_t *pucBufffer);
+static Status_t prvUartRecvWbc(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara);
+static Status_t prvWbcSend(uint8_t *pucBufffer);
 #endif /* ENABLE_WIFI_MOUDLE */
 
 /* Local variables */
@@ -280,7 +280,7 @@ Status_t AppComInit(void) {
 
 #if ENABLE_WIFI_MOUDLE
     s_xUartWifi = UartCreate();
-    UartConfigCb(s_xUartWifi, prvUartRecvWifi, UartIsrCb, NULL, NULL, NULL);
+    UartConfigCb(s_xUartWifi, prvUartRecvWbc, UartIsrCb, NULL, NULL, NULL);
     UartConfigCom(s_xUartWifi, UART5, 115200, UART5_IRQn);
     RS485_RD();
 #endif /* ENABLE_WIFI_MOUDLE */
@@ -608,7 +608,6 @@ static void prvCmdCli(uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLeng
 }
 
 #if 1
-/* ���ʮ�������ַ��� */
 void splitString(const char *str, char pairs[NUM_PAIRS][HEX_PAIR_LENGTH + 1]) {
     for (int i = 0; i < NUM_PAIRS; i++) {
         strncpy(pairs[i], str + i * HEX_PAIR_LENGTH, HEX_PAIR_LENGTH);
@@ -616,7 +615,6 @@ void splitString(const char *str, char pairs[NUM_PAIRS][HEX_PAIR_LENGTH + 1]) {
     }
 }
 
-/* ʮ�������ַ���תʮ�����ַ��� */
 void hexToDecimal(const char *hex, char *decimalArray) {
     unsigned long decValue  = strtoul(hex, NULL, 16);
     int           tensDigit = decValue / 10;
@@ -894,13 +892,12 @@ void DMA1_Channel4_IRQHandler(void) {
 }
 
 #if ENABLE_WIFI_MOUDLE
-static Status_t prvUartRecvWifi(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara) {
+static Status_t prvUartRecvWbc(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara) {
     UartBlkSend(s_xUartWifi, pucBuf, usLength, 10);
-
     return STATUS_OK;
 }
 
-static Status_t prvWifiSendCmd(uint8_t *pucBufffer) {
+static Status_t prvWbcSend(uint8_t *pucBufffer) {
     UartBlkSend(s_xUartWifi, pucBufffer, sizeof(pucBufffer) / sizeof(pucBufffer[0]), 10);
     return STATUS_OK;
 }
@@ -952,7 +949,7 @@ static uint8_t* prvParseHexStr(const char* pcStr, uint8_t *pucLength)
 }
 #endif
 
-static void prvCliCmdWifiSend(cli_printf cliprintf, int argc, char **argv) {
+static void prvCliCmdWbcSend(cli_printf cliprintf, int argc, char **argv) {
     CHECK_CLI();
 
     if (argc < 2) {
@@ -972,7 +969,7 @@ static void prvCliCmdWifiSend(cli_printf cliprintf, int argc, char **argv) {
 
     return;
 }
-CLI_CMD_EXPORT(wifi_cmd_send, wifi cmd send, prvCliCmdWifiSend)
+CLI_CMD_EXPORT(wbc_send, wifi bluetooth command send, prvCliCmdWbcSend)
 #endif /* ENABLE_WIFI_MOUDLE */
 
 #endif /* SET_COM_SEND_PTL == 1 */

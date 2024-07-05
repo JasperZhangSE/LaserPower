@@ -58,11 +58,14 @@ int main(void) {
     I2cInit();
     Aht30Init();
     AppCliInit();
+    
     AppDataInit();
 
     AppComInit();
     AppSysInit();
-
+    
+    
+    
     /* Start scheduler */
     osKernelStart();
 
@@ -71,3 +74,16 @@ int main(void) {
     while (1) {
     }
 }
+
+/*
+|-------------------------------------------------------|
+|              Abbreviated interpretation               |
+|-------------------------------------------------------|
+|        wbc       |       wifi bluetooth command       |
+|-------------------------------------------------------|
+|        ccs       |       constant current source      |
+|-------------------------------------------------------|
+|        cvs       |       constant voltage source      |
+|-------------------------------------------------------|
+ 
+*/

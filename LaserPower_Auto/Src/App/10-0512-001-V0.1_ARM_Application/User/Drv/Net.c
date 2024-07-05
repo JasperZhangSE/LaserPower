@@ -134,27 +134,27 @@ typedef struct {
 }NetCtrl_t;
 
 /* Forward declaration */
-static TcpConnStatus_t  prvTcpConnect   (NetCtrl_t *pxCtrl);
-static Status_t         prvEthChk       (EthCtrl_t *pxCtrl);
-static Status_t         prvNetChk       (NetCtrl_t *pxCtrl);
-static void             prvTaskEth      (void const *pvPara);
-static void             prvTaskNet      (void const *pvPara);
-static Status_t         prvShowIp       (uint32_t ulIP);
-static Status_t         prvShowDhcpIp   (struct netif* pxNetIf);
-static Status_t         prvShowStaticIp (struct netif* pxNetIf);
-static Status_t         prvRstStaticIp  (struct netif* pxNetIf, uint32_t ulLocalIp, uint32_t ulLocalNetMask, uint32_t ulLocalGwAddr);
+static TcpConnStatus_t   prvTcpConnect   (NetCtrl_t *pxCtrl);
+static Status_t          prvEthChk       (EthCtrl_t *pxCtrl);
+static Status_t          prvNetChk       (NetCtrl_t *pxCtrl);
+static void              prvTaskEth      (void const *pvPara);
+static void              prvTaskNet      (void const *pvPara);
+static Status_t          prvShowIp       (uint32_t ulIP);
+static Status_t          prvShowDhcpIp   (struct netif* pxNetIf);
+static Status_t          prvShowStaticIp (struct netif* pxNetIf);
+static Status_t          prvRstStaticIp  (struct netif* pxNetIf, uint32_t ulLocalIp, uint32_t ulLocalNetMask, uint32_t ulLocalGwAddr);
 extern ETH_HandleTypeDef heth;
 
 /* Local variables */
-static EthCtrl_t        s_xEthCtrl;
-static struct netif     s_xNetIf;
-static ip_addr_t        s_xIpAddr       = {.addr = 0};
-static ip_addr_t        s_xNetMask      = {.addr = 0};
-static ip_addr_t        s_xGwAddr       = {.addr = 0};
-static uint8_t          s_ucIpAddr[4]   = LWIP_DEFAULT_IPADDR;
-static uint8_t          s_ucNetMask[4]  = LWIP_DEFAULT_NETMASK;
-static uint8_t          s_ucGwAddr[4]   = LWIP_DEFAULT_GATEWAY;
-static Bool_t           s_bDhcp         = LWIP_DEFAULT_DHCP;
+static EthCtrl_t         s_xEthCtrl;
+static struct netif      s_xNetIf;
+static ip_addr_t         s_xIpAddr       = {.addr = 0};
+static ip_addr_t         s_xNetMask      = {.addr = 0};
+static ip_addr_t         s_xGwAddr       = {.addr = 0};
+static uint8_t           s_ucIpAddr[4]   = LWIP_DEFAULT_IPADDR;
+static uint8_t           s_ucNetMask[4]  = LWIP_DEFAULT_NETMASK;
+static uint8_t           s_ucGwAddr[4]   = LWIP_DEFAULT_GATEWAY;
+static Bool_t            s_bDhcp         = LWIP_DEFAULT_DHCP;
 
 /* Functions */
 Status_t DrvNetInit(void)

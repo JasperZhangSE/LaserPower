@@ -65,6 +65,8 @@ extern "C" {
 #define th_OrderNum         g_xData.ulOrderNum
 #define th_CtrlMode         g_xData.CtrlMode
 #define th_APwmDuty         g_xData.APwmDuty
+#define th_CVS              g_xData.CVS
+#define th_CCS              g_xData.CCS
 
 #define FLASH_DATA_HEAD     (0xA5)
 #define FLASH_SAVE_PAGE1    (1024*64)
@@ -99,6 +101,8 @@ extern "C" {
                                 .ulOrderNum = 0001, \
                                 .CtrlMode = 1 /* 1: Internal dac; 2: Pwm; 3: External AD */, \
                                 .APwmDuty = 50, \
+                                .CVS = 1, \
+                                .CCS = 1, \
                                 .ucCrc  = 0 \
                             }
 #endif /* APP_DATA_INIT */
@@ -151,7 +155,12 @@ typedef struct {
     uint32_t ulOrderNum;     /* Order Number  */
     uint16_t CtrlMode;       /* Laser control mode */
     uint16_t APwmDuty;       /* Constant flow source pwm duty */
+    /* 为防止报文出错 没有放在ModEn，后续如果升级可以放到ModEn */
+    uint16_t CVS;            /* 恒压源检测 */
+    uint16_t CCS;            /* 恒流源检测 */
+    
     uint8_t  ucCrc;          /* Check code */
+
 }Data_t;
 #pragma pack(pop)
 

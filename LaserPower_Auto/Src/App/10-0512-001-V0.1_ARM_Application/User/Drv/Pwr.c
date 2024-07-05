@@ -300,8 +300,14 @@ static void prvCliCmdPwrASetCur(cli_printf cliprintf, int argc, char** argv)
         cliprintf("wrong channel: 1~3\n");
         return;
     }
-    
-    DacSet(lChan, CUR_TO_DAC(fCur));
+    if (th_CtrlMode == 1)
+    {
+        DacSet(lChan, CUR_TO_DAC(fCur));
+    }
+    else if (th_CtrlMode == 2)
+    {
+        SetAFreq(CUR_TO_FREQ(fCur));
+    }
 }
 CLI_CMD_EXPORT(pwr_a_set_cur, set auxiliary output current, prvCliCmdPwrASetCur)
 

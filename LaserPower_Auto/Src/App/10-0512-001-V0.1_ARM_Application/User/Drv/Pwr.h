@@ -66,8 +66,9 @@ extern "C" {
 #define CUR_TO_DAC(d)   ((d) * 4096 * 2500/*mV*/ / DAC_VREF / 50/*A*/)
 #define CUR_TO_ADC(d)   ((d) * 4096 * 2500/*mV*/ / ADC_VREF / 50/*A*/)
 
-#define CUR_TO_FREQ(d)  (((d) * 100 < 10) ? 0 : (d * 100))
-#define FREQ_TO_CUR(d)  ((72000000 / (TIM4->ARR * d)) / 100.f)
+#define CUR_TO_FREQ(d)  (((d) * 10 < 10) ? 0 : (d * 10))
+#define PSC_TO_CUR(d)   ((72000000 / (TIM4->ARR * d)) / 100.f)
+#define PSC_TO_HZ(d)    (72000000 / (TIM4->ARR * d))
 
 /* Types */
 typedef enum {
