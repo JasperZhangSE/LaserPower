@@ -83,9 +83,9 @@ Status_t DebugPrintf(char *cFormat, ...)
     Status_t    xRet = STATUS_OK;
     static char cBuf[DEBUG_BUF_SIZE];
 
-    ASSERT(s_bInit);
+    ASSERT(s_bInit == true);
     /* "TCP & UDP" does not support printf function in isr */
-    if (((DEBUG_CHAN_TCP == s_xDebugChan)|| (DEBUG_CHAN_UDP == s_xDebugChan)) && prvIsInIsr()) {
+    if (((DEBUG_CHAN_TCP == s_xDebugChan) || (DEBUG_CHAN_UDP == s_xDebugChan)) && prvIsInIsr()) {
         return STATUS_ERR;
     }
     
@@ -94,8 +94,15 @@ Status_t DebugPrintf(char *cFormat, ...)
     
     va_list va;
     va_start(va, cFormat);
-    usLength = vsprintf(cBuf, cFormat, va);
-    switch(s_xDebugChan) {
+    usLength = vsnprintf(cBuf, sizeof(cBuf), cFormat, va);
+    va_end(va);
+
+    if (usLength >= sizeof(cBuf)) {
+        usLength = sizeof(cBuf) - 1;
+        cBuf[usLength] = '\0';  // Null-terminate the buffer
+    }
+
+    switch (s_xDebugChan) {
 #if DEBUG_ENABLE_UART
     case DEBUG_CHAN_UART:
         xRet = DebugUartPrintfDirect(cBuf, usLength);
@@ -115,13 +122,13 @@ Status_t DebugPrintf(char *cFormat, ...)
         /* Do nothing! */
         break;
     }
-    va_end(va);
-    
+
     /* Leave critical section */
     prvDebugUnlock();
     
     return xRet;
 }
+
 
 static int prvIsInIsr(void)
 {
