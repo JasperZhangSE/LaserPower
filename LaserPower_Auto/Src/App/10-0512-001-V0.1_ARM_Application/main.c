@@ -63,9 +63,7 @@ int main(void) {
 
     AppComInit();
     AppSysInit();
-    
-    
-    
+
     /* Start scheduler */
     osKernelStart();
 

@@ -57,66 +57,66 @@
 #endif /* SYS_ASSERT */
 
 /* Local defines */
-#define SYS_SAVELASTSTATES() pxState->xLastState = pxState->xState;
-#define SYS_TICK_GET()       osKernelSysTick()
-#define LED_ALARM_R          LED1
-#define LED_ALARM_G          LED2
-#define LED_ACTIVE_R         LED3
-#define LED_ACTIVE_G         LED4
-#define LED_POWER_R          LED5
-#define LED_POWER_G          LED6
-#define LED_ON               1
-#define LED_OFF              0
-#define MPWR_DC_OK           1
-#define MPWR_AC_OK           1
-#define MPWR_ON              1
-#define MPWR_OFF             0
-#define APWR_OK              1
-#define APWR_ON              1
-#define APWR_OFF             0
-#define LED_CTRL_ON          1
-#define LED_CTRL_OFF         0
-#define QBH_ON_ON            0
-#define QBH_ON_OFF           1
-#define WATER_PRESS_ON       0
-#define WATER_PRESS_OFF      1
-#define WATER_CHILLER_ON     0
-#define WATER_CHILLER_OFF    1
+#define SYS_SAVELASTSTATES()  pxState->xLastState = pxState->xState;
+#define SYS_TICK_GET()        osKernelSysTick()
+#define LED_ALARM_R           LED1
+#define LED_ALARM_G           LED2
+#define LED_ACTIVE_R          LED3
+#define LED_ACTIVE_G          LED4
+#define LED_POWER_R           LED5
+#define LED_POWER_G           LED6
+#define LED_ON                1
+#define LED_OFF               0
+#define MPWR_DC_OK            1
+#define MPWR_AC_OK            1
+#define MPWR_ON               1
+#define MPWR_OFF              0
+#define APWR_OK               1
+#define APWR_ON               1
+#define APWR_OFF              0
+#define LED_CTRL_ON           1
+#define LED_CTRL_OFF          0
+#define QBH_ON_ON             0
+#define QBH_ON_OFF            1
+#define WATER_PRESS_ON        0
+#define WATER_PRESS_OFF       1
+#define WATER_CHILLER_ON      0
+#define WATER_CHILLER_OFF     1
 
 /* Forward declaration */
-static void prvSysTask(void *pvPara);
-static void prvDaemonTask(void *pvPara);
+static void prvSysTask        (void *pvPara);
+static void prvDaemonTask     (void *pvPara);
 
 /* State machine */
-static void prvProc(void);
-static void prvFsmStart(State_t *pxState);
-static void prvFsmInitMpwr(State_t *pxState);
-static void prvFsmReady(State_t *pxState);
-static void prvFsmIdle(State_t *pxState);
-static void prvFsmLaserSInit(State_t *pxState);
-static void prvFsmLaserSRun(State_t *pxState);
-static void prvFsmLaserSDone(State_t *pxState);
-static void prvFsmLaserMInit(State_t *pxState);
-static void prvFsmLaserMRun(State_t *pxState);
-static void prvFsmLaserMDone(State_t *pxState);
+static void prvProc           (void);
+static void prvFsmStart       (State_t *pxState);
+static void prvFsmInitMpwr    (State_t *pxState);
+static void prvFsmReady       (State_t *pxState);
+static void prvFsmIdle        (State_t *pxState);
+static void prvFsmLaserSInit  (State_t *pxState);
+static void prvFsmLaserSRun   (State_t *pxState);
+static void prvFsmLaserSDone  (State_t *pxState);
+static void prvFsmLaserMInit  (State_t *pxState);
+static void prvFsmLaserMRun   (State_t *pxState);
+static void prvFsmLaserMDone  (State_t *pxState);
 static void prvFsmInfraredInit(State_t *pxState);
-static void prvFsmInfraredRun(State_t *pxState);
+static void prvFsmInfraredRun (State_t *pxState);
 static void prvFsmInfraredDone(State_t *pxState);
-static void prvFsmError(State_t *pxState);
+static void prvFsmError       (State_t *pxState);
 
 /* Help functions */
-static bool prvInitChkMPwr(void);
-static bool prvChkPwr(void);
-static bool prvChkMPwr(void);
-static bool prvChkAPwr(void);
-static void prvEnterFsm(void);
-static void prvProcManualCtrl(void);
-static void prvProcPanelLed(void);
+static bool prvInitChkMPwr    (void);
+static bool prvChkPwr         (void);
+static bool prvChkMPwr        (void);
+static bool prvChkAPwr        (void);
+static void prvEnterFsm       (void);
+static void prvProcManualCtrl (void);
+static void prvProcPanelLed   (void);
 
 /* Global variables */
-State_t    *g_pxState  = NULL;
-uint8_t     g_ucVerChk = 0;
-uint16_t    g_usSwInfo = 0x0000;
+State_t    *g_pxState         = NULL;
+uint8_t     g_ucVerChk        = 0;
+uint16_t    g_usSwInfo        = 0x0000;
 SysStatus_t g_xSysStatus;
 
 /* Local variables */

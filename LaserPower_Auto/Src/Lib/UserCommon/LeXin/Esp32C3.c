@@ -41,10 +41,28 @@ Status_t Esp32C3Init(void) {
     return STATUS_OK;
 }
 
-Status_t SendAtCmd(UartHandle_t UartHandle, AT_Command command) {
-    if (command >= AT_CMD_MAX) {
-        return STATUS_ERR;
+Status_t SendAtCmd(UartHandle_t UartHandle, uint16_t type_id, uint16_t cmd_id)
+{
+    const char * cmd_str = NULL;
+    switch (type_id)
+    {
+        /* Basic at cmd */
+        case basic:
+            cmd_str = basic_cmd[cmd_id];
+        break;
+        
+        /* Ble at cmd */
+        case ble:
+            cmd_str = ble_cmd[cmd_id];
+        break;
+
+        /* No search */
+        default:
+            /* Do nothing */
+        break;
     }
-    const char *cmd_str = AT_COMMAND_STRINGS[command];
-    return UartBlkSend(UartHandle, (uint8_t *)cmd_str, sizeof(cmd_str) / sizeof(cmd_str[0]), 10);
+    
+    UartBlkSend(UartHandle, (uint8_t *)cmd_str, strlen(cmd_str), 10);
+    
+    return STATUS_OK;
 }

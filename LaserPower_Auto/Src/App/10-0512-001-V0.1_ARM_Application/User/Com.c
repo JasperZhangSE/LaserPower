@@ -214,40 +214,40 @@ enum { REPLY_OK, REPLY_ERR };
 #pragma pack(pop)
 
 /* Forward declaration */
-static void     prvComTask(void *pvPara);
-static void     prvNetTask(void *pvPara);
-static void     prvCmdQueryInfo(uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
-static void     prvCmdSysReset(uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
-static void     prvCmdParaConfig(uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
-static void     prvCmdModuleCtrl(uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
-static void     prvCmdUpgradeEnable(uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
-static void     prvCmdCli(uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
-static void     prvCmdEncrypt(uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
-static void     prvSend(uint8_t *pucData, uint8_t ucDataSize, uint8_t ucCmd, void *pvInfo);
-static void     prvSendReply(uint8_t ucStatus, void *pvInfo);
-static void     prvSendStatusInfo(void *pvInfo);
-static void     prvSendDiagInfo(void *pvInfo);
-static void     prvSendSysPara(void *pvInfo);
-static Status_t prvProtPktProc(const void *pvHead, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
-static Bool_t   prvProtPktChk(const void *pvStart, uint32_t ulLength);
-static Status_t prvUartRecv(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara);
-static void     prvCliUartPrintf(const char *cFormat, ...);
+static void     prvComTask          (void *pvPara);
+static void     prvNetTask          (void *pvPara);
+static void     prvCmdQueryInfo     (uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
+static void     prvCmdSysReset      (uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
+static void     prvCmdParaConfig    (uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
+static void     prvCmdModuleCtrl    (uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
+static void     prvCmdUpgradeEnable (uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
+static void     prvCmdCli           (uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
+static void     prvCmdEncrypt       (uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
+static void     prvSend             (uint8_t *pucData, uint8_t ucDataSize, uint8_t ucCmd, void *pvInfo);
+static void     prvSendReply        (uint8_t ucStatus, void *pvInfo);
+static void     prvSendStatusInfo   (void *pvInfo);
+static void     prvSendDiagInfo     (void *pvInfo);
+static void     prvSendSysPara      (void *pvInfo);
+static Status_t prvProtPktProc      (const void *pvHead, const uint8_t *pucCont, uint32_t ulLength, void *pvInfo);
+static Bool_t   prvProtPktChk       (const void *pvStart, uint32_t ulLength);
+static Status_t prvUartRecv         (uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara);
+static void     prvCliUartPrintf    (const char *cFormat, ...);
 
 #if ENABLE_WIFI_MOUDLE
-static Status_t prvUartRecvWbc(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara);
-static Status_t prvWbcSend(uint8_t *pucBufffer);
+static Status_t prvUartRecvWbc      (uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara);
+static Status_t prvWbcSend          (uint8_t *pucBufffer);
 #endif /* ENABLE_WIFI_MOUDLE */
 
 /* Local variables */
-static RbufHandle_t s_xRbuf = NULL;
-static UartHandle_t s_xUart = NULL;
-static ProtHandle_t s_xProt = NULL;
+static RbufHandle_t s_xRbuf         = NULL;
+static UartHandle_t s_xUart         = NULL;
+static ProtHandle_t s_xProt         = NULL;
 static uint8_t      s_ucBuffer[256];
 static uint8_t      s_ucSendBuffer[MAX_MSG_SIZE];
-static SOCKET       s_xSvrSock = -1;
-static SOCKET       s_xCliSock = -1;
+static SOCKET       s_xSvrSock      = -1;
+static SOCKET       s_xCliSock      = -1;
 #if ENABLE_WIFI_MOUDLE
-static UartHandle_t s_xUartWifi = NULL;
+static UartHandle_t s_xUartWifi     = NULL;
 #endif /* ENABLE_WIFI_MOUDLE */
 
 /* Functions */
@@ -551,7 +551,7 @@ static void prvCmdModuleCtrl(uint8_t ucSrcAddr, const uint8_t *pucCont, uint32_t
 
     const ICmdModuleCtrl_t *pxData = (const ICmdModuleCtrl_t *)pucCont;
 
-    Status_t                xRet   = STATUS_ERR;
+    Status_t xRet   = STATUS_ERR;
     switch (pxData->usType) {
     case TYPE_EX_CTRL_EN:
         xRet = LaserOn(pxData->ulPara1, pxData->ulPara2);
