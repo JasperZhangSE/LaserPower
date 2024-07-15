@@ -56,6 +56,7 @@ extern "C" {
 #include "Rtc/Rtc.h"
 #include "Uart/Uart.h"
 #include "Wdog/Wdog.h"
+#include "LeXin/Esp32C3.h"
 
 /* Bsp library */
 #include "BspGpio.h"

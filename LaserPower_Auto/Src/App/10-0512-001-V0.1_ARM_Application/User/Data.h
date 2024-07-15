@@ -99,7 +99,7 @@ extern "C" {
                                 .usAimLightDuty = 60, \
                                 .ucPwrId = "12345678901234", \
                                 .ulOrderNum = 0001, \
-                                .CtrlMode = 1 /* 1: Internal dac; 2: Pwm; 3: External AD */, \
+                                .CtrlMode = 3 /* 1: Internal dac; 2: Pwm; 3: External AD */, \
                                 .APwmDuty = 50, \
                                 .CVS = 1, \
                                 .CCS = 1, \
@@ -155,6 +155,7 @@ typedef struct {
     uint32_t ulOrderNum;     /* Order Number  */
     uint16_t CtrlMode;       /* Laser control mode */
     uint16_t APwmDuty;       /* Constant flow source pwm duty */
+    
     /* 为防止报文出错 没有放在ModEn，后续如果升级可以放到ModEn */
     uint16_t CVS;            /* 恒压源检测 */
     uint16_t CCS;            /* 恒流源检测 */

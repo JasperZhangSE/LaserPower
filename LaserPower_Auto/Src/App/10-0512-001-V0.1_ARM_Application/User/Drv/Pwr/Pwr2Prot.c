@@ -507,7 +507,6 @@ static Status_t prvGetInputVol(uint32_t ulPwr2Addr)
             return STATUS_OK;
         }
     }
-    
     return STATUS_ERR;
 }
 

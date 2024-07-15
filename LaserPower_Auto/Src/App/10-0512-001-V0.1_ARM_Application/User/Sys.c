@@ -807,6 +807,11 @@ static void prvFsmError(State_t *pxState)
 
 static bool prvInitChkMPwr(void)
 {
+    if (th_CVS == 0)
+    {
+        return true;
+    }
+    
     uint16_t s1 = GpioGetInput(MPWR1_STAT_AC);
     uint16_t s2 = GpioGetInput(MPWR1_STAT_DC);
     bool     b  = PwrIsOk();
@@ -825,6 +830,7 @@ static bool prvChkPwr(void)
 static bool prvChkMPwr(void)
 {
     if (th_CVS == 0) {
+        /* Don't check cvs */
         return true;
     }
 
@@ -1285,3 +1291,17 @@ static void prvCliCmdPwmGet(cli_printf cliprintf, int argc, char **argv)
     cliprintf("psc = %d\n", psc);
 }
 CLI_CMD_EXPORT(pwm_get, pwm get f d, prvCliCmdPwmGet)
+
+static void prvCliCmdShowFsmStatus(cli_printf cliprintf, int argc, char **argv)
+{
+    CHECK_CLI();
+
+    if (argc != 1) {
+        cliprintf("show_fsm_status\n");
+        return;
+    }
+    
+    State_t *pxState = &s_xState;
+    cliprintf("FSM_State = %d\n", pxState->xState);
+}
+CLI_CMD_EXPORT(show_fsm_status, show fsm status, prvCliCmdShowFsmStatus)

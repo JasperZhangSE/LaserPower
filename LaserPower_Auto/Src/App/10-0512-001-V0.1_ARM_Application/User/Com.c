@@ -50,7 +50,7 @@
 
 /* Local defines */
 #define DEV_ID                  1
-#define ENABLE_WIFI_MOUDLE      1
+#define ENABLE_WIFI_MOUDLE      0
 #define MAX_MSG_SIZE            256 /*64*/
 #define GET_SEND_BUFFER()       (s_ucSendBuffer)
 #define GET_HEAD_BUFFER()       ((Head_t *)(s_ucSendBuffer))
@@ -74,18 +74,18 @@ enum { CHAN_COM, CHAN_NET };
 
 #if SET_COM_SEND_PTL == 1
 enum {
-    iCmdQueryInfo     = 0x01,
-    iCmdSysReset      = 0x02,
-    iCmdParaConfig    = 0x03,
-    iCmdModuleCtrl    = 0x04,
-    iCmdUpgradeEnable = 0x05,
-    iCmdCli           = 0x06,
-    iCmdEncrypt       = 0x07,
-    rCmdReply         = 0x81,
-    rCmdStatusInfo    = 0x82,
-    rCmdDiagInfo      = 0x83,
-    rCmdCli           = 0x84,
-    rCmdSysPara       = 0x85,
+    iCmdQueryInfo      = 0x01,
+    iCmdSysReset       = 0x02,
+    iCmdParaConfig     = 0x03,
+    iCmdModuleCtrl     = 0x04,
+    iCmdUpgradeEnable  = 0x05,
+    iCmdCli            = 0x06,
+    iCmdEncrypt        = 0x07,
+    rCmdReply          = 0x81,
+    rCmdStatusInfo     = 0x82,
+    rCmdDiagInfo       = 0x83,
+    rCmdCli            = 0x84,
+    rCmdSysPara        = 0x85,
 };
 
 enum {
@@ -101,11 +101,11 @@ enum {
 };
 
 enum {
-    TYPE_EX_CTRL_EN   = 0x1111,
-    TYPE_LASER_OFF    = 0x2222,
-    TYPE_INFRARED_ON  = 0x3333,
-    TYPE_INFRARED_OFF = 0x4444,
-    TYPE_MANUAL_CTRL  = 0x5555,
+    TYPE_EX_CTRL_EN    = 0x1111,
+    TYPE_LASER_OFF     = 0x2222,
+    TYPE_INFRARED_ON   = 0x3333,
+    TYPE_INFRARED_OFF  = 0x4444,
+    TYPE_MANUAL_CTRL   = 0x5555,
 };
 
 typedef struct {
@@ -235,7 +235,7 @@ static void     prvCliUartPrintf    (const char *cFormat, ...);
 
 #if ENABLE_WIFI_MOUDLE
 static Status_t prvUartRecvWbc      (uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara);
-static Status_t prvWbcSend          (uint8_t *pucBufffer);
+//static Status_t prvWbcSend          (uint8_t *pucBufffer);
 #endif /* ENABLE_WIFI_MOUDLE */
 
 /* Local variables */
@@ -247,7 +247,7 @@ static uint8_t      s_ucSendBuffer[MAX_MSG_SIZE];
 static SOCKET       s_xSvrSock      = -1;
 static SOCKET       s_xCliSock      = -1;
 #if ENABLE_WIFI_MOUDLE
-static UartHandle_t s_xUartWifi     = NULL;
+static UartHandle_t s_xUartEsp32C3     = NULL;
 #endif /* ENABLE_WIFI_MOUDLE */
 
 /* Functions */
@@ -279,10 +279,9 @@ Status_t AppComInit(void) {
     UartConfigCom(s_xUart, USART1, 115200, USART1_IRQn);
 
 #if ENABLE_WIFI_MOUDLE
-    s_xUartWifi = UartCreate();
-    UartConfigCb(s_xUartWifi, prvUartRecvWbc, UartIsrCb, NULL, NULL, NULL);
-    UartConfigCom(s_xUartWifi, UART5, 115200, UART5_IRQn);
-    RS485_RD();
+    s_xUartEsp32C3 = UartCreate();
+    UartConfigCb(s_xUartEsp32C3, prvUartRecvWbc, UartIsrCb, NULL, NULL, NULL);
+    UartConfigCom(s_xUartEsp32C3, UART5, 115200, UART5_IRQn);
 #endif /* ENABLE_WIFI_MOUDLE */
 
     Bool_t   bDhcp          = th_Dhcp;
@@ -893,20 +892,20 @@ void DMA1_Channel4_IRQHandler(void) {
 
 #if ENABLE_WIFI_MOUDLE
 static Status_t prvUartRecvWbc(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara) {
-    UartBlkSend(s_xUartWifi, pucBuf, usLength, 10);
+    UartBlkSend(s_xUartEsp32C3, pucBuf, usLength, 10);
     return STATUS_OK;
 }
 
-static Status_t prvWbcSend(uint8_t *pucBufffer) {
-    UartBlkSend(s_xUartWifi, pucBufffer, sizeof(pucBufffer) / sizeof(pucBufffer[0]), 10);
-    return STATUS_OK;
-}
+//static Status_t prvWbcSend(uint8_t *pucBufffer) {
+//    UartBlkSend(s_xUartEsp32C3, pucBufffer, sizeof(pucBufffer) / sizeof(pucBufffer[0]), 10);
+//    return STATUS_OK;
+//}
 
-void UART5_IRQHandler(void) {
-    if (s_xUartWifi) {
-        UartIsr(s_xUartWifi);
-    }
-}
+//void UART5_IRQHandler(void) {
+//    if (s_xUartEsp32C3) {
+//        UartIsr(s_xUartEsp32C3);
+//    }
+//}
 
 #if 0
 static uint8_t* prvParseHexStr(const char* pcStr, uint8_t *pucLength)
@@ -956,16 +955,12 @@ static void prvCliCmdWbcSend(cli_printf cliprintf, int argc, char **argv) {
         cliprintf("wifi_cmd_send CDM\n");
         return;
     }
-
-    // uint8_t ucLength = 0;
-
-    // uint8_t *pucBuffer = prvParseHexStr(argv[1], &ucLength);
-
+    
     uint8_t *pucBuffer = (uint8_t *)argv[1];
 
-    uint8_t  ucLength  = sizeof(pucBuffer) / sizeof(pucBuffer[0]);
-
-    UartBlkSend(s_xUartWifi, pucBuffer, ucLength, 10);
+    cliprintf("cmd : %s\n", pucBuffer);
+    
+    UartBlkSend(s_xUartEsp32C3, pucBuffer, sizeof(pucBuffer) / sizeof(pucBuffer[0]), 10);
 
     return;
 }
@@ -1163,7 +1158,7 @@ static uint8_t      s_ucSendBuffer[MAX_MSG_SIZE];
 static SOCKET       s_xSvrSock = -1;
 static SOCKET       s_xCliSock = -1;
 #if ENABLE_WIFI_MOUDLE
-static UartHandle_t s_xUartWifi      = NULL;
+static UartHandle_t s_xUartEsp32C3      = NULL;
 static Bool_t       s_bUartRs485Recv = FALSE;
 #endif /* ENABLE_WIFI_MOUDLE */
 
@@ -1195,9 +1190,9 @@ Status_t AppComInit(void) {
     UartConfigTxDma(s_xUart, DMA1_Channel4, DMA1_Channel4_IRQn);
     UartConfigCom(s_xUart, USART1, 115200, USART1_IRQn);
 #if ENABLE_WIFI_MOUDLE
-    s_xUartWifi = UartCreate();
-    UartConfigCb(s_xUartWifi, prvUartRecvWifi, UartIsrCb, NULL, NULL, NULL);
-    UartConfigCom(s_xUartWifi, UART5, 115200, UART5_IRQn);
+    s_xUartEsp32C3 = UartCreate();
+    UartConfigCb(s_xUartEsp32C3, prvUartRecvWifi, UartIsrCb, NULL, NULL, NULL);
+    UartConfigCom(s_xUartEsp32C3, UART5, 115200, UART5_IRQn);
     RS485_RD();
 #endif /* ENABLE_WIFI_MOUDLE */
 
@@ -1864,7 +1859,7 @@ static Status_t prvUartRecvWifi(uint8_t *pucBuf, uint16_t usLength, void *pvIsrP
     if (s_bUartRs485Recv) {
         /* Enable RS485 write */
         RS485_WT();
-        UartBlkSend(s_xUartWifi, pucBuf, usLength, 10);
+        UartBlkSend(s_xUartEsp32C3, pucBuf, usLength, 10);
         /* Enable RS485 read */
         RS485_RD();
     }
@@ -1872,8 +1867,8 @@ static Status_t prvUartRecvWifi(uint8_t *pucBuf, uint16_t usLength, void *pvIsrP
 }
 
 void UART5_IRQHandler(void) {
-    if (s_xUartWifi) {
-        UartIsr(s_xUartWifi);
+    if (s_xUartEsp32C3) {
+        UartIsr(s_xUartEsp32C3);
     }
 }
 
@@ -1929,7 +1924,7 @@ static void prvCliCmdRs485Send(cli_printf cliprintf, int argc, char **argv) {
     /* Enable RS485 write */
     RS485_WT();
 
-    UartBlkSend(s_xUartWifi, pucBuffer, ucLength, 10);
+    UartBlkSend(s_xUartEsp32C3, pucBuffer, ucLength, 10);
 
     /* Enable RS485 read */
     RS485_RD();

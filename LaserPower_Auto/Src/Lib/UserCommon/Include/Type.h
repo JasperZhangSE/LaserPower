@@ -36,7 +36,10 @@ extern "C" {
 // };
 
 /* Types */
-typedef enum { STATUS_OK, STATUS_ERR } Status_t;
+typedef enum {
+    STATUS_OK, 
+    STATUS_ERR 
+} Status_t;
 
 typedef uint8_t   Bool_t;
 typedef struct tm Time_t;

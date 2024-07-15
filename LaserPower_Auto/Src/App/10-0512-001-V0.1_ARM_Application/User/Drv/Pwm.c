@@ -37,7 +37,7 @@ Status_t DrvPwmInit(void) {
     sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
     HAL_TIM_PWM_ConfigChannel(&s_hTim1, &sConfigOC, TIM_CHANNEL_1);
     HAL_TIM_MspPostInit(&s_hTim1);
-    HAL_TIM_PWM_Start(&s_hTim1, TIM_CHANNEL_1);
+    //HAL_TIM_PWM_Start(&s_hTim1, TIM_CHANNEL_1);
 #endif
 
 #if TIM4_CH3_PWM
@@ -68,7 +68,7 @@ Status_t DrvPwmInit(void) {
 }
 
 Status_t ToggleAimLight(uint16_t OnOff) {
-    if (OnOff == 1) {
+    if (OnOff != 0) {
         HAL_TIM_PWM_Start(&s_hTim1, TIM_CHANNEL_1);
     }
     else {
@@ -159,5 +159,18 @@ static void prvCliCmdSetCcsPwf(cli_printf cliprintf, int argc, char **argv) {
 
     SetAFreq(usFreq);
 }
-CLI_CMD_EXPORT(set_ccs_pwf, set Tim4 ch3 (constant wave frequency) pwm frequency, prvCliCmdSetCcsPwf)
+CLI_CMD_EXPORT(set_ccs_pfm, set Tim4 ch3 (constant wave frequency) pwm frequency, prvCliCmdSetCcsPwf)
 
+static void prvCliCmdTogleAimLight(cli_printf cliprintf, int argc, char **argv) {
+    CHECK_CLI();
+
+    if (argc != 2) {
+        cliprintf("toggle_aim_light ON_OFF\n");
+        return;
+    }
+
+    uint32_t en = atoi(argv[1]);
+
+    ToggleAimLight(en);
+}
+CLI_CMD_EXPORT(toggle_aim_light, Toggle aim light, prvCliCmdTogleAimLight)

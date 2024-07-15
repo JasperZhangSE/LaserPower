@@ -203,19 +203,24 @@ Status_t i2c_read_byte(uint8_t *byte, uint8_t ack) {
 }
 
 Status_t i2c_write_data(uint8_t device_address, uint8_t *data, uint16_t length) {
+    
     /* 检查空指针 */
     if (!data) {
         return STATUS_ERR;
     }
+    
+    SW_I2C_LOCK();
 
     /* 发送启动信号 */
     if (i2c_start() != STATUS_OK) {
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
     /* 发送设备地址(写模式) */
     if (i2c_write_byte(device_address << 1 & 0xFE) != STATUS_OK) {
         i2c_stop();
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
@@ -223,6 +228,7 @@ Status_t i2c_write_data(uint8_t device_address, uint8_t *data, uint16_t length) 
     for (uint16_t i = 0; i < length; i++) {
         if (i2c_write_byte(data[i]) != STATUS_OK) {
             i2c_stop();
+            SW_I2C_UNLOCK();
             return STATUS_ERR;
         }
         TRACE("data[%d] = %d\r\n", i, data[i]);
@@ -231,19 +237,24 @@ Status_t i2c_write_data(uint8_t device_address, uint8_t *data, uint16_t length) 
 
     /* 发送停止信号 */
     i2c_stop();
+    SW_I2C_UNLOCK();
     return STATUS_OK;
 }
 
 Status_t i2c_read_data(uint8_t device_address, uint8_t *data, uint16_t length, uint8_t ack) {
+    
     /* 检查空指针 */
     if (!data) {
         TRACE("data is NULL\r\n");
         return STATUS_ERR;
     }
+    
+    SW_I2C_LOCK();
 
     /* 发送启动信号 */
     if (i2c_start() != STATUS_OK) {
         TRACE("start error\r\n");
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
@@ -251,6 +262,7 @@ Status_t i2c_read_data(uint8_t device_address, uint8_t *data, uint16_t length, u
     if (i2c_write_byte(device_address << 1 | 0x01) != STATUS_OK) {
         TRACE("write address error\r\n");
         i2c_stop();
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
@@ -259,6 +271,7 @@ Status_t i2c_read_data(uint8_t device_address, uint8_t *data, uint16_t length, u
         if (i2c_read_byte(&data[i], (i < length - 1) ? ack : 1) != STATUS_OK) {
             TRACE("i2c_read_data error\r\n");
             i2c_stop();
+            SW_I2C_UNLOCK();
             return STATUS_ERR;
         }
         TRACE("data[%d] = %d\r\n", i, data[i]);
@@ -267,6 +280,7 @@ Status_t i2c_read_data(uint8_t device_address, uint8_t *data, uint16_t length, u
 
     /* 发送停止信号 */
     i2c_stop();
+    SW_I2C_UNLOCK();
     return STATUS_OK;
 }
 
@@ -280,18 +294,21 @@ Status_t i2c_write_register(uint8_t device_address, uint8_t register_address, ui
 
     /* 发送启动信号 */
     if (i2c_start() != STATUS_OK) {
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
     /* 发送设备地址(写模式) */
     if (i2c_write_byte(device_address << 1 & 0xFE) != STATUS_OK) {
         i2c_stop();
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
     /* 发送寄存器地址 */
     if (i2c_write_byte(register_address) != STATUS_OK) {
         i2c_stop();
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
@@ -300,6 +317,7 @@ Status_t i2c_write_register(uint8_t device_address, uint8_t register_address, ui
         /* 使用数组下标访问数据 */
         if (i2c_write_byte(data[i]) != STATUS_OK) {
             i2c_stop();
+            SW_I2C_UNLOCK();
             return STATUS_ERR;
         }
     }
@@ -322,29 +340,34 @@ Status_t i2c_read_register(uint8_t device_address, uint8_t register_address, uin
 
     /* 发送启动信号 */
     if (i2c_start() != STATUS_OK) {
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
     /* 发送设备地址和写位(左移一位并将最低位清零) */
     if (i2c_write_byte((device_address << 1) & 0xFE) != STATUS_OK) {
         i2c_stop();
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
     /* 发送寄存器地址 */
     if (i2c_write_byte(register_address) != STATUS_OK) {
         i2c_stop();
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
     /* 发送起始条件(重复开始) */
     if (i2c_start() != STATUS_OK) {
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
     /* 发送设备地址和读位 (左移一位并将最低位置 1) */
     if (i2c_write_byte((device_address << 1) | 0x01) != STATUS_OK) {
         i2c_stop();
+        SW_I2C_UNLOCK();
         return STATUS_ERR;
     }
 
@@ -353,6 +376,7 @@ Status_t i2c_read_register(uint8_t device_address, uint8_t register_address, uin
             // 最后一个字节，发送NACK // 第二个参数1表示NACK
             if (i2c_read_byte(&data[i], 1) != STATUS_OK) {
                 i2c_stop();
+                SW_I2C_UNLOCK();
                 return STATUS_ERR;
             }
         }
@@ -360,6 +384,7 @@ Status_t i2c_read_register(uint8_t device_address, uint8_t register_address, uin
             // 不是最后一个字节，发送ACK// 第二个参数0表示ACK
             if (i2c_read_byte(&data[i], 0) != STATUS_OK) {
                 i2c_stop();
+                SW_I2C_UNLOCK();
                 return STATUS_ERR;
             }
         }

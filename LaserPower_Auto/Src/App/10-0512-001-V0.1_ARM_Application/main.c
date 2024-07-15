@@ -58,12 +58,10 @@ int main(void) {
     I2cInit();
     Aht30Init();
     AppCliInit();
-    
     AppDataInit();
-
+    Esp32C3Init();
     AppComInit();
     AppSysInit();
-
     /* Start scheduler */
     osKernelStart();
 
@@ -77,11 +75,11 @@ int main(void) {
 |-------------------------------------------------------|
 |              Abbreviated interpretation               |
 |-------------------------------------------------------|
-|        wbc       |       wifi bluetooth command       |
-|-------------------------------------------------------|
 |        ccs       |       constant current source      |
 |-------------------------------------------------------|
 |        cvs       |       constant voltage source      |
 |-------------------------------------------------------|
- 
+|        wbc       |       wifi blutetooth command      |
+|-------------------------------------------------------|
+
 */

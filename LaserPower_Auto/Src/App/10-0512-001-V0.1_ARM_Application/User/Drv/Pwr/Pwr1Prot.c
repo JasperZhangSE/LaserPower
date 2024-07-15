@@ -299,7 +299,6 @@ static Status_t prvSetVol(float fV)
             return STATUS_OK;
         }
     }
-    
     s_ulErrCnt++;
     return STATUS_ERR;
 }
