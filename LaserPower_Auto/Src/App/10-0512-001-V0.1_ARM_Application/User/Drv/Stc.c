@@ -306,7 +306,6 @@ static void prvStcTask(void *pvPara) {
             s_bQueryDiagInfo = FALSE;
         }
 #endif
-
         n++;
         (offset > STC_QUERY_TASK_DELAY) ? (delay = 0) : (delay -= offset);
         osDelay(delay);

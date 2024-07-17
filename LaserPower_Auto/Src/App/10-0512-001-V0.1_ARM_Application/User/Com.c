@@ -158,8 +158,8 @@ typedef struct {
 typedef struct {
     uint8_t ucFsm;
     struct {
-        uint16_t _MPWR1_STAT_AC : 1;
-        uint16_t _MPWR1_STAT_DC : 1;
+        uint16_t _MPWR_STAT_AC : 1;
+        uint16_t _MPWR_STAT_DC : 1;
         uint16_t _APWR1_STAT    : 1;
         uint16_t _APWR2_STAT    : 1;
         uint16_t _APWR3_STAT    : 1;
@@ -169,7 +169,7 @@ typedef struct {
         uint16_t _WATER_CHILLER : 1;
     } xDi;
     struct {
-        uint16_t _MPWR1_EN : 1;
+        uint16_t _MPWR_EN : 1;
         uint16_t _APWR1_EN : 1;
         uint16_t _APWR2_EN : 1;
         uint16_t _APWR3_EN : 1;
@@ -714,8 +714,8 @@ static void prvSendStatusInfo(void *pvInfo) {
 
     pxData->ucFsm                = (uint8_t)th_Fsm;
 
-    pxData->xDi._MPWR1_STAT_AC   = GpioGetInput(MPWR1_STAT_AC);
-    pxData->xDi._MPWR1_STAT_DC   = GpioGetInput(MPWR1_STAT_DC);
+    pxData->xDi._MPWR_STAT_AC   = GpioGetInput(MPWR_STAT_AC);
+    pxData->xDi._MPWR_STAT_DC   = GpioGetInput(MPWR_STAT_DC);
     pxData->xDi._APWR1_STAT      = GpioGetInput(APWR1_STAT);
     pxData->xDi._APWR2_STAT      = GpioGetInput(APWR2_STAT);
     pxData->xDi._APWR3_STAT      = GpioGetInput(APWR3_STAT);
@@ -724,7 +724,7 @@ static void prvSendStatusInfo(void *pvInfo) {
     pxData->xDi._WATER_PRESS     = GpioGetInput(WATER_PRESS);
     pxData->xDi._WATER_CHILLER   = GpioGetInput(WATER_CHILLER);
 
-    pxData->xDo._MPWR1_EN        = GpioGetOutput(MPWR1_EN);
+    pxData->xDo._MPWR_EN        = GpioGetOutput(MPWR_EN);
     pxData->xDo._APWR1_EN        = GpioGetOutput(APWR1_EN);
     pxData->xDo._APWR2_EN        = GpioGetOutput(APWR2_EN);
     pxData->xDo._APWR3_EN        = GpioGetOutput(APWR3_EN);
@@ -1058,8 +1058,8 @@ typedef struct {
     struct {
         uint16_t _MPWR_T_STAT_AC : 1;
         uint16_t _MPWR_T_STAT_DC : 1;
-        uint16_t _MPWR1_STAT_AC  : 1;
-        uint16_t _MPWR1_STAT_DC  : 1;
+        uint16_t _MPWR_STAT_AC  : 1;
+        uint16_t _MPWR_STAT_DC  : 1;
         uint16_t _MPWR_B_STAT_AC : 1;
         uint16_t _MPWR_B_STAT_DC : 1;
 
@@ -1073,7 +1073,7 @@ typedef struct {
     } xDi;
     struct {
         uint16_t _MPWR_T_EN : 1;
-        uint16_t _MPWR1_EN  : 1;
+        uint16_t _MPWR_EN  : 1;
         uint16_t _MPWR_B_EN : 1;
 
         uint16_t _APWR1_EN  : 1;
@@ -1632,8 +1632,8 @@ static void prvSendStatusInfo(void *pvInfo) {
 
     pxData->xDi._MPWR_T_STAT_AC  = GpioGetInput(MPWR_T_STAT_AC);
     pxData->xDi._MPWR_T_STAT_DC  = GpioGetInput(MPWR_T_STAT_DC);
-    pxData->xDi._MPWR1_STAT_AC   = GpioGetInput(MPWR1_STAT_AC);
-    pxData->xDi._MPWR1_STAT_DC   = GpioGetInput(MPWR1_STAT_DC);
+    pxData->xDi._MPWR_STAT_AC    = GpioGetInput(MPWR_STAT_AC);
+    pxData->xDi._MPWR_STAT_DC   = GpioGetInput(MPWR_STAT_DC);
     pxData->xDi._MPWR_B_STAT_AC  = GpioGetInput(MPWR_B_STAT_AC);
     pxData->xDi._MPWR_B_STAT_DC  = GpioGetInput(MPWR_B_STAT_DC);
 
@@ -1646,7 +1646,7 @@ static void prvSendStatusInfo(void *pvInfo) {
     pxData->xDi._WATER_CHILLER   = GpioGetInput(WATER_CHILLER);
 
     pxData->xDo._MPWR_T_EN       = GpioGetOutput(MPWR_T_EN);
-    pxData->xDo._MPWR1_EN        = GpioGetOutput(MPWR1_EN);
+    pxData->xDo._MPWR_EN        = GpioGetOutput(MPWR_EN);
     pxData->xDo._MPWR_B_EN       = GpioGetOutput(MPWR_B_EN);
 
     pxData->xDo._APWR1_EN        = GpioGetOutput(APWR1_EN);

@@ -180,6 +180,9 @@ Status_t AppSysInit(void)
         GpioSetOutput(EX_AD_EN, 1);
         break;
     }
+    
+    
+    
     return STATUS_OK;
 }
 
@@ -272,7 +275,7 @@ Status_t LaserOff(uint32_t ulSelect)
                 pxState->ulCounter = 0;
                 TRACE("[%6d] LaserSRun    -> LaserSDone\n", SYS_TICK_GET());
             }
-
+            
             GpioSetOutput(APWR1_EN, s_ucAPwrCtrl1);
             GpioSetOutput(APWR2_EN, s_ucAPwrCtrl2);
             GpioSetOutput(APWR3_EN, s_ucAPwrCtrl3);
@@ -311,38 +314,37 @@ Status_t LaserOff(uint32_t ulSelect)
                 s_ucAPwrCtrl2 = APWR_OFF;
                 s_ucAPwrCtrl3 = APWR_OFF;
             }
-
+            
             if ((s_ucAPwrCtrl1 == APWR_OFF) && (s_ucAPwrCtrl2 == APWR_OFF) && (s_ucAPwrCtrl3 == APWR_OFF)) {
                 pxState->xState    = FSM_LASERs_DONE;
                 pxState->ulCounter = 0;
                 TRACE("[%6d] LaserSRun    -> LaserSDone\n", SYS_TICK_GET());
             }
+            
             GpioSetOutput(APWR1_EN, s_ucAPwrCtrl1);
             GpioSetOutput(APWR2_EN, s_ucAPwrCtrl2);
             GpioSetOutput(APWR3_EN, s_ucAPwrCtrl3);
-            if (s_ucAPwrCtrl1 == APWR_ON) {
-                SetAFreq(CUR_TO_FREQ((0 / 10.f)));
-                SetADuty(0);
-            }
-            if (s_ucAPwrCtrl2 == APWR_ON) {
-                SetAFreq(CUR_TO_FREQ((0 / 10.f)));
-                SetADuty(0);
-            }
-            if (s_ucAPwrCtrl3 == APWR_ON) {
-                SetAFreq(CUR_TO_FREQ((0 / 10.f)));
-                SetADuty(0);
-            }
-
-            ToggleCcsStatus(0);
-
             
-             TRACE("[%6d] LaserSInit   -> LaserSRun\n", SYS_TICK_GET());
-                TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(),
-                      s_ucAPwrCtrl1, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 / 10));
-                TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(),
-                      s_ucAPwrCtrl2, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 / 10));
-                TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(),
-                      s_ucAPwrCtrl3, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 / 10));
+            if (s_ucAPwrCtrl1 == APWR_OFF) {
+                SetAFreq(CUR_TO_FREQ((0)));
+                SetADuty(0);
+//                TRACE("CUR_TO_FREQ : %.1f\n", CUR_TO_FREQ((0)));
+//                TRACE("TIM4->PSC   : %d\n",  TIM4->PSC);
+            }
+            if (s_ucAPwrCtrl2 == APWR_OFF) {
+                SetAFreq(CUR_TO_FREQ((0)));
+                SetADuty(0);
+            }
+            if (s_ucAPwrCtrl3 == APWR_OFF) {
+                SetAFreq(CUR_TO_FREQ((0)));
+                SetADuty(0);
+            }
+            
+            ToggleCcsStatus(0);
+            
+            TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(), s_ucAPwrCtrl1, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 * 100 / (TIM4->ARR + 1)));
+            TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(), s_ucAPwrCtrl2, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 * 100 / (TIM4->ARR + 1)));
+            TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(), s_ucAPwrCtrl3, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 * 100 / (TIM4->ARR + 1)));
 
             return STATUS_OK;
         }
@@ -400,6 +402,11 @@ Status_t EnableManualCtrl(uint8_t ucEnable)
 
 static void prvSysTask(void *pvPara)
 {
+    /* Start with beep on 2s */
+    GpioSetOutput(BEEP_SW, 1);
+    osDelay(2000);
+    GpioSetOutput(BEEP_SW, 0);
+    
     WdogInit();
 
     /* Check if software can be used! */
@@ -565,12 +572,9 @@ static void prvFsmLaserSInit(State_t *pxState)
                 pxState->ulCounter      = 0;
                 th_SysStatus.WORK_LASER = 1;
                 TRACE("[%6d] LaserSInit   -> LaserSRun\n", SYS_TICK_GET());
-                TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl1,
-                      DAC_TO_CUR(DacGet(APWR1_CTRL)), DAC_TO_MVOL(DacGet(APWR1_CTRL)));
-                TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl2,
-                      DAC_TO_CUR(DacGet(APWR2_CTRL)), DAC_TO_MVOL(DacGet(APWR2_CTRL)));
-                TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl3,
-                      DAC_TO_CUR(DacGet(APWR3_CTRL)), DAC_TO_MVOL(DacGet(APWR3_CTRL)));
+                TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl1, DAC_TO_CUR(DacGet(APWR1_CTRL)), DAC_TO_MVOL(DacGet(APWR1_CTRL)));
+                TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl2, DAC_TO_CUR(DacGet(APWR2_CTRL)), DAC_TO_MVOL(DacGet(APWR2_CTRL)));
+                TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%4d mV)\n", SYS_TICK_GET(), s_ucAPwrCtrl3, DAC_TO_CUR(DacGet(APWR3_CTRL)), DAC_TO_MVOL(DacGet(APWR3_CTRL)));
 #if 0
                     for (uint8_t n = 0; n < 5; n++) {
                         Status_t r = PwrOutput(1);
@@ -597,15 +601,17 @@ static void prvFsmLaserSInit(State_t *pxState)
             GpioSetOutput(APWR2_EN, s_ucAPwrCtrl2);
             GpioSetOutput(APWR3_EN, s_ucAPwrCtrl3);
             if (s_ucAPwrCtrl1 == APWR_ON) {
-                SetAFreq(CUR_TO_FREQ((s_ulCurrent / 10.f)));
+                SetAFreq(CUR_TO_FREQ((s_ulCurrent)));
                 SetADuty(50);
+//                TRACE("CUR_TO_FREQ : %.1f\n", CUR_TO_FREQ((s_ulCurrent)));
+//                TRACE("TIM4->PSC   : %d\n",  TIM4->PSC);
             }
             if (s_ucAPwrCtrl2 == APWR_ON) {
-                SetAFreq(CUR_TO_FREQ((s_ulCurrent / 10.f)));
+                SetAFreq(CUR_TO_FREQ((s_ulCurrent)));
                 SetADuty(50);
             }
             if (s_ucAPwrCtrl3 == APWR_ON) {
-                SetAFreq(CUR_TO_FREQ((s_ulCurrent / 10.f)));
+                SetAFreq(CUR_TO_FREQ((s_ulCurrent)));
                 SetADuty(50);
             }
 
@@ -620,12 +626,9 @@ static void prvFsmLaserSInit(State_t *pxState)
                 th_SysStatus.WORK_LASER = 1;
           
                 TRACE("[%6d] LaserSInit   -> LaserSRun\n", SYS_TICK_GET());
-                TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(),
-                      s_ucAPwrCtrl1, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 / 10));
-                TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(),
-                      s_ucAPwrCtrl2, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 / 10));
-                TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(),
-                      s_ucAPwrCtrl3, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 / 10));
+                TRACE("[%6d]     Set APWR1_EN %d, APWR1_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(), s_ucAPwrCtrl1, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 * 100 / (TIM4->ARR + 1)));
+                TRACE("[%6d]     Set APWR2_EN %d, APWR2_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(), s_ucAPwrCtrl2, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 * 100 / (TIM4->ARR + 1)));
+                TRACE("[%6d]     Set APWR3_EN %d, APWR3_CTRL %.1f A (%d Hz), Duty( %3d %% )\n", SYS_TICK_GET(), s_ucAPwrCtrl3, PSC_TO_CUR(TIM4->PSC), (int)PSC_TO_FREQ(TIM4->PSC), (uint32_t)(TIM4->CCR3 * 100 / (TIM4->ARR + 1)));
 
 #if 0
                     for (uint8_t n = 0; n < 5; n++) {
@@ -798,11 +801,17 @@ static void prvFsmError(State_t *pxState)
 {
     SYS_SAVELASTSTATES();
 
+    GpioSetOutput(BEEP_SW, 1);
+    
     if (prvChkPwr()) {
         pxState->xState    = FSM_IDLE;
         pxState->ulCounter = 0;
         TRACE("[%6d] Error        -> Idle\n", SYS_TICK_GET());
+        
+        GpioSetOutput(BEEP_SW, 0);
     }
+    
+    
 }
 
 static bool prvInitChkMPwr(void)
@@ -812,12 +821,12 @@ static bool prvInitChkMPwr(void)
         return true;
     }
     
-    uint16_t s1 = GpioGetInput(MPWR1_STAT_AC);
-    uint16_t s2 = GpioGetInput(MPWR1_STAT_DC);
+    uint16_t s1 = GpioGetInput(MPWR_STAT_AC);
+    uint16_t s2 = GpioGetInput(MPWR_STAT_DC);
     bool     b  = PwrIsOk();
-    if ((s1 == MPWR_AC_OK) && (GpioGetOutput(MPWR1_EN) != MPWR_ON)) {
-        GpioSetOutput(MPWR1_EN, MPWR_ON);
-        TRACE("[%6d]     Set MPWR1_EN on\n", SYS_TICK_GET());
+    if ((s1 == MPWR_AC_OK) && (GpioGetOutput(MPWR_EN) != MPWR_ON)) {
+        GpioSetOutput(MPWR_EN, MPWR_ON);
+        TRACE("[%6d]     Set MPWR_EN on\n", SYS_TICK_GET());
     }
     return ((s1 == MPWR_AC_OK) && (s2 == MPWR_DC_OK) && b) ? true : false;
 }
@@ -835,8 +844,8 @@ static bool prvChkMPwr(void)
     }
 
     int32_t  v  = PwrDataGet(PWR2_M1_ADDR, PWR_OUTPUT_VOL);
-    uint16_t s1 = GpioGetInput(MPWR1_STAT_AC);
-    uint16_t s2 = GpioGetInput(MPWR1_STAT_DC);
+    uint16_t s1 = GpioGetInput(MPWR_STAT_AC);
+    uint16_t s2 = GpioGetInput(MPWR_STAT_DC);
     return ((v >= 650 /*0.1V*/) && (s1 == MPWR_AC_OK) && (s2 == MPWR_DC_OK)) ? true : false;
 }
 
@@ -990,8 +999,8 @@ static void prvProcManualCtrl(void)
 
 static void prvProcPanelLed(void)
 {
-    uint8_t  s_MPWR1_STAT_AC  = GpioGetInput(MPWR1_STAT_AC);
-    uint8_t  s_MPWR1_STAT_DC  = GpioGetInput(MPWR1_STAT_DC);
+    uint8_t  s_MPWR_STAT_AC   = GpioGetInput(MPWR_STAT_AC);
+    uint8_t  s_MPWR_STAT_DC   = GpioGetInput(MPWR_STAT_DC);
     uint8_t  s_APWR1_STAT     = GpioGetInput(APWR1_STAT);
     uint8_t  s_APWR2_STAT     = GpioGetInput(APWR2_STAT);
     uint8_t  s_APWR3_STAT     = GpioGetInput(APWR3_STAT);
@@ -1001,11 +1010,13 @@ static void prvProcPanelLed(void)
     int16_t  s_MAX_TEMP1      = StcGetTempHFrom(0, th_TempNum - 1);
     int16_t  s_MAX_TEMP2      = StcGetTempHFrom(th_TempNum, 10 - 1);
     int32_t  s_PWR_OUTPUT_VOL = PwrDataGet(PWR2_M1_ADDR, PWR_OUTPUT_VOL);
+    int32_t  s_PWR_INPUT_VOL  = PwrDataGet(PWR2_M1_ADDR, PWR_INPUT_VOL);
     uint16_t s_PD             = AdcGet(PD_VS);
     uint16_t s_CHAN1_CUR      = AdcGet(APWR1_CUR);
     uint16_t s_CHAN2_CUR      = AdcGet(APWR2_CUR);
     uint16_t s_CHAN3_CUR      = AdcGet(APWR3_CUR);
     uint16_t s_LASER_EN       = GpioGetInput(LASER_EN);
+    uint16_t s_MPWR_EN        = GpioGetInput(MPWR_EN);
 
     /* Power */
 
@@ -1096,21 +1107,21 @@ static void prvProcPanelLed(void)
 
     /* System status update */
     /* Main power */
-    if ((s_PWR_OUTPUT_VOL >= 650 /*0.1V*/) && (s_MPWR1_STAT_AC == MPWR_AC_OK) && (s_MPWR1_STAT_DC == MPWR_AC_OK)) {
+    if ((s_PWR_OUTPUT_VOL >= 650 /*0.1V*/) && (s_MPWR_STAT_AC == MPWR_AC_OK) && (s_MPWR_STAT_DC == MPWR_AC_OK)) {
         th_SysStatus.STATUS_MPWR = 1;
     }
     else {
         th_SysStatus.STATUS_MPWR = 0;
     }
     /* Emergent stop */
-    static uint8_t s_last_MPWR1_STAT_AC = 0;
-    if ((s_last_MPWR1_STAT_AC == 0) && (s_MPWR1_STAT_AC == 1)) {
+    static uint8_t s_last_MPWR_STAT_AC = 0;
+    if ((s_last_MPWR_STAT_AC == 0) && (s_MPWR_STAT_AC == 1)) {
         th_SysStatus.ALARM_EMCY_STOP = 0;
     }
-    if ((s_last_MPWR1_STAT_AC == 1) && (s_MPWR1_STAT_AC == 0)) {
+    if ((s_last_MPWR_STAT_AC == 1) && (s_MPWR_STAT_AC == 0)) {
         th_SysStatus.ALARM_EMCY_STOP = 1;
     }
-    s_last_MPWR1_STAT_AC = s_MPWR1_STAT_AC;
+    s_last_MPWR_STAT_AC = s_MPWR_STAT_AC;
     /* Water chiller */
     if (th_ModEn.WATER_CHILLER && (s_WATER_CHILLER == WATER_CHILLER_OFF)) {
         th_SysStatus.ALARM_WATER_CHILLER = 1;
@@ -1157,6 +1168,41 @@ static void prvProcPanelLed(void)
     else {
         th_SysStatus.ALARM_PD = 0;
         th_SysStatus.WARN_PD  = 0;
+    }
+    
+    /* Power led */
+    /* Led ac ok */
+    if (s_MPWR_STAT_AC == 1){
+        GpioSetOutput(LED_AC_OK, LED_ON);
+        GpioSetOutput(LED_AC_FAIL, LED_OFF);
+    }
+    else {
+        GpioSetOutput(LED_AC_OK, LED_OFF);
+        GpioSetOutput(LED_AC_FAIL, LED_ON);
+    }
+    
+    /* Led dc */
+    if ((s_MPWR_STAT_DC == 1) && (s_PWR_OUTPUT_VOL >= 650)){
+        GpioSetOutput(LED_DC_OK, LED_ON);
+        GpioSetOutput(LED_DC_FAIL, LED_OFF);
+    }
+    else {
+        GpioSetOutput(LED_DC_OK, LED_OFF);
+        GpioSetOutput(LED_DC_FAIL, LED_ON);
+    }
+    
+    /* Led can  */
+    if (s_MPWR_STAT_AC == 0) {
+        GpioSetOutput(LED_CAN_OK, LED_OFF);
+        GpioSetOutput(LED_CAN_FAIL, LED_OFF);
+    }
+    else if (s_PWR_INPUT_VOL >= 1000 /*0.1V*/) {
+        GpioSetOutput(LED_CAN_OK, LED_ON);
+        GpioSetOutput(LED_CAN_FAIL, LED_OFF);
+    }
+    else {
+        GpioSetOutput(LED_CAN_OK, LED_OFF);
+        GpioSetOutput(LED_CAN_FAIL, LED_ON);
     }
 }
 

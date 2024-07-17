@@ -43,9 +43,9 @@ Status_t DrvPwmInit(void) {
 #if TIM4_CH3_PWM
     /* TIM4 CH3 */
     s_hTim2.Instance           = TIM4;
-    s_hTim2.Init.Prescaler     = 7200 - 1;
+    s_hTim2.Init.Prescaler     = 36000 - 1;
     s_hTim2.Init.CounterMode   = TIM_COUNTERMODE_UP;
-    s_hTim2.Init.Period        = 1000 - 1;
+    s_hTim2.Init.Period        = 200 - 1;
     s_hTim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 
     HAL_TIM_PWM_Init(&s_hTim2);
@@ -104,11 +104,11 @@ Status_t SetADuty(uint16_t Duty) {
     
 //    TIM4->CCR3 = (int)(Duty * 10);
     
-    __HAL_TIM_SET_COMPARE(&s_hTim2, TIM_CHANNEL_3, Duty * 10);
+    __HAL_TIM_SET_COMPARE(&s_hTim2, TIM_CHANNEL_3, Duty * (TIM4->ARR + 1) / 100);
     return STATUS_OK;
 }
 
-Status_t SetAFreq(uint16_t Freq) {
+Status_t SetAFreq(float Freq) {
     if (Freq < 10 || Freq > 5000) {
         TRACE("ERROR\n");
         return STATUS_ERR;
@@ -117,9 +117,11 @@ Status_t SetAFreq(uint16_t Freq) {
 //    uint32_t ulPsc = (int)(Fclk / (Freq * (TIM4->ARR + 1))) - 1;
     
     float ulPsc_float = (Fclk / (Freq * ((float)TIM4->ARR + 1.0))) - 1.0;
-    uint32_t ulPsc = (uint32_t)roundf(ulPsc_float);
+    uint16_t ulPsc = (uint16_t)roundf(ulPsc_float);
     
-//    TIM4->PSC = (uint32_t)ulPsc;
+//    TRACE("PWM->TIM4->PSC : %d\n", ulPsc);
+    
+//    TIM4->PSC = ulPsc;
     __HAL_TIM_SET_PRESCALER(&s_hTim2, ulPsc);
 
 //    TRACE("ulPsc = %d\n", ulPsc);

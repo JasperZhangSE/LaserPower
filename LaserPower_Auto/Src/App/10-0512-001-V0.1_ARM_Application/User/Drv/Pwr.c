@@ -206,7 +206,7 @@ static void prvCliCmdPwrMEnable(cli_printf cliprintf, int argc, char** argv)
     int lCtrl = atoi(argv[2]);
     switch (lDev)
     {
-        case 1: GpioSetOutput(MPWR1_EN, lCtrl); break;
+        case 1: GpioSetOutput(MPWR_EN, lCtrl); break;
     }
     
 }
@@ -216,9 +216,9 @@ static void prvCliCmdPwrMStatus(cli_printf cliprintf, int argc, char** argv)
 {
     CHECK_CLI();
     
-    cliprintf("    MPWR1_STAT_AC [MCU_AC_OK, DI]: %d\n", GpioGetInput(MPWR1_STAT_AC));
-    cliprintf("    MPWR1_STAT_DC [MCU_DC_OK, DI]: %d\n", GpioGetInput(MPWR1_STAT_DC));
-    cliprintf("    MPWR1_EN      [MCU_SW_OK, DO]: %d\n", GpioGetOutput(MPWR1_EN));
+    cliprintf("    MPWR_STAT_AC [MCU_AC_OK, DI]: %d\n", GpioGetInput(MPWR_STAT_AC));
+    cliprintf("    MPWR_STAT_DC [MCU_DC_OK, DI]: %d\n", GpioGetInput(MPWR_STAT_DC));
+    cliprintf("    MPWR_EN      [MCU_SW_OK, DO]: %d\n", GpioGetOutput(MPWR_EN));
     cliprintf("\n");
 }
 CLI_CMD_EXPORT(pwr_m_status, show main power status, prvCliCmdPwrMStatus)

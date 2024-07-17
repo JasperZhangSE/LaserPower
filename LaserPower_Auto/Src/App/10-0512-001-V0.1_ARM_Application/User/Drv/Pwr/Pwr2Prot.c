@@ -225,6 +225,21 @@ int32_t Pwr2DataGet(uint32_t ulAddr, PwrDataType_t xType)
     int32_t r = 0;
     switch (ulAddr)
     {
+    case PWR2_M1_ADDR: 
+    switch (xType) {
+        case PWR_OUTPUT_VOL:
+            r = s_M1_xData.usOutVol; /* 0.1V */
+            break;
+        case PWR_STATUS:
+            r = (s_M1_xData.ucStatus1 << 8) | s_M1_xData.ucStatus0;
+            break;
+        case PWR_INPUT_VOL:
+            r = s_M1_xData.usInVca; /* 0.1V */
+            break;
+        default:
+            r = 0;
+            break;
+    }break;
     case PWR2_M2_ADDR: 
         switch (xType) {
             case PWR_OUTPUT_VOL:
@@ -237,18 +252,7 @@ int32_t Pwr2DataGet(uint32_t ulAddr, PwrDataType_t xType)
                 r = 0;
                 break;
         }break;
-    case PWR2_M1_ADDR: 
-        switch (xType) {
-            case PWR_OUTPUT_VOL:
-                r = s_M1_xData.usOutVol; /* 0.1V */
-                break;
-            case PWR_STATUS:
-                r = (s_M1_xData.ucStatus1 << 8) | s_M1_xData.ucStatus0;
-                break;
-            default:
-                r = 0;
-                break;
-        }break;
+    
     case PWR2_M3_ADDR: 
         switch (xType) {
             case PWR_OUTPUT_VOL:

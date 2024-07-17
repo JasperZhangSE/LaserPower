@@ -26,7 +26,7 @@ extern "C" {
 Status_t DrvPwmInit(void);
 Status_t SetAinLightCur(uint16_t light);
 Status_t SetADuty(uint16_t Duty);
-Status_t SetAFreq(uint16_t Freq);
+Status_t SetAFreq(float Freq);
 Status_t ToggleAimLight(uint16_t OnOff);
 Status_t ToggleCcsStatus(uint16_t OnOff);
 int      PwmGet(uint16_t Id);
