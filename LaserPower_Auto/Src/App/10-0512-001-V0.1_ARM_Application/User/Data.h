@@ -67,6 +67,7 @@ extern "C" {
 #define th_APwmDuty         g_xData.APwmDuty
 #define th_CVS              g_xData.CVS
 #define th_CCS              g_xData.CCS
+#define th_AimMutex         g_xData.AimMutex
 
 #define FLASH_DATA_HEAD     (0xA5)
 #define FLASH_SAVE_PAGE1    (1024*64)
@@ -103,6 +104,7 @@ extern "C" {
                                 .APwmDuty = 50, \
                                 .CVS = 1, \
                                 .CCS = 1, \
+                                .AimMutex = 1, \
                                 .ucCrc  = 0 \
                             }
 #endif /* APP_DATA_INIT */
@@ -159,6 +161,8 @@ typedef struct {
     /* 为防止报文出错 没有放在ModEn，后续如果升级可以放到ModEn */
     uint16_t CVS;            /* 恒压源检测 */
     uint16_t CCS;            /* 恒流源检测 */
+    
+    uint16_t AimMutex;       /* 红光互斥 */
     
     uint8_t  ucCrc;          /* Check code */
 

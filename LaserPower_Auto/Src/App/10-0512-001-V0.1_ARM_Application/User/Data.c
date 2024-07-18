@@ -201,6 +201,7 @@ static void prvCliCmdCfgShow(cli_printf cliprintf, int argc, char** argv)
     cliprintf("GwAddr   : %s\n", ipaddr_ntoa((const ip_addr_t*)&(th_LocalGwAddr)));
     cliprintf("AimDuty  : %d %%\n", th_AimLightDuty);
     cliprintf("APwrDuty : %d %%\n", th_APwmDuty);
+    cliprintf("AimMutex : %d\n", th_AimMutex);
     cliprintf("CtrlMode : %d\n", th_CtrlMode);
 }
 CLI_CMD_EXPORT(cfg_show, show config parameters, prvCliCmdCfgShow)
@@ -673,6 +674,28 @@ static void prvCliCmdCfgSetCcs(cli_printf cliprintf, int argc, char** argv)
 }
 CLI_CMD_EXPORT(cfg_set_ccs, set ccs en, prvCliCmdCfgSetCcs)
 
+static void prvCliCmdCfgSetAimMutex(cli_printf cliprintf, int argc, char** argv)
+{
+    CHECK_CLI();
+    
+    if (argc != 2) {
+        cliprintf("cfg_set_aim_mutex EN\n");
+        return;
+    }
+    
+    uint16_t en = atoi(argv[1]);
+    
+    if (en == 0) {
+        th_AimMutex = 0;
+    }
+    else {
+        th_AimMutex = 1;
+    }
+    
+    DataSaveDirect();
+    cliprintf("ok, recheck the config by cfg_show command\n");
+}
+CLI_CMD_EXPORT(cfg_set_aim_mutex, set aim mutex, prvCliCmdCfgSetAimMutex)
 
 static void Data_test(cli_printf cliprintf, int argc, char** argv)
 {
