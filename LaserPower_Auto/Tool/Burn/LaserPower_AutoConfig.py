@@ -41,7 +41,7 @@ def ConfigInfo(comPort,pwrType,realTime):
     
     strResp += CliExec(comPort, f"cfg_set_pwr_id {PwrId}")
     strResp += CliExec(comPort, "cfg_set_comp_rate 0")
-    strResp += CliExec(comPort, "cfg_set_pd_warn_l1 500")
+    strResp += CliExec(comPort, "cfg_set_pd_warn_l1 1300")
     strResp += CliExec(comPort, "cfg_set_pd_warn_l2 200")
     
     strResp += CliExec(comPort, f"cfg_set_pwr_type {pwrType}")
@@ -81,7 +81,7 @@ if __name__ == '__main__':
         try:
             comPort = ComOpen(comName)
             strResp = ""
-            strResp += CliExec(comPort, "encli Master!23 1")
+            strResp += CliExec(comPort, "encli admin 1")
             strResp += ConfigInfo(comPort,pwrType,realTime)
             print("\r\nConfiguration parameters:")
             print(strResp)

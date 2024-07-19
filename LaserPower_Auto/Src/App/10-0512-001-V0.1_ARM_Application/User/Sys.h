@@ -39,7 +39,8 @@ extern "C" {
 
 /* Defines */
 #define SYS_TASK_DELAY  1   /* ms */
-#define LED_TASK_DELAY  100 /* ms */
+#define MANUAL_TASK_DELAY  1   /* ms */
+#define LED_TASK_DELAY  10 /* ms */
 #define FSM_READY_WAIT  (2500 / SYS_TASK_DELAY)
 #define th_Fsm          g_pxState->xState
 #define th_RunTime      g_pxState->ulRunTime

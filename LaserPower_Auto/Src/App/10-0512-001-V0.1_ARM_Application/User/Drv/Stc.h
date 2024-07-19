@@ -25,10 +25,12 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include "Include/Include.h"
+
 /* Defines */
 #define STC_EN_DEV1             1
 #define STC_EN_DEV2             1   /* XXX: STC_EN_DEV2 */
-#define STC_EN_DEV3             1   /* XXX: STC_EN_DEV3 */
+#define STC_EN_DEV3             0   /* XXX: STC_EN_DEV3 */
 #define STC_QUERY_TASK_DELAY    20
 #define STC_QUERY_TEMP_PRD      20
 #define STC_QUERY_DIAG_PRD      1000
@@ -65,6 +67,7 @@ int16_t  StcGetTempL(void);
 /* Get highest temperature */
 int16_t  StcGetTempHFrom(uint8_t st, uint8_t ed);
 int16_t  StcGetPdHFrom(void);
+int16_t StcGetPdLight(void);
 
 int16_t  AdcToTemp(uint16_t usAdc);
 

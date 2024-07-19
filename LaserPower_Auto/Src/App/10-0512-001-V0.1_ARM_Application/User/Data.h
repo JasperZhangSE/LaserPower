@@ -68,6 +68,8 @@ extern "C" {
 #define th_CVS              g_xData.CVS
 #define th_CCS              g_xData.CCS
 #define th_AimMutex         g_xData.AimMutex
+#define th_PdLightEn        g_xData.PdLightEn
+#define th_PdLight          g_xData.PdLight
 
 #define FLASH_DATA_HEAD     (0xA5)
 #define FLASH_SAVE_PAGE1    (1024*64)
@@ -85,7 +87,7 @@ extern "C" {
                                 .usPdWarnL2 = 993/*800mV*/,\
                                 .ulAdVolPara = 5800/*87/15=5.8*/,\
                                 .ucPwrType = 1,\
-                                .ucTempNum = 18,\
+                                .ucTempNum = 6,\
                                 .usTrialEn = 1, \
                                 .ucTrial = 0, \
                                 .usTrialDays = 30, \
@@ -105,6 +107,8 @@ extern "C" {
                                 .CVS = 1, \
                                 .CCS = 1, \
                                 .AimMutex = 1, \
+                                .PdLightEn = 1, \
+                                .PdLight = 500, \
                                 .ucCrc  = 0 \
                             }
 #endif /* APP_DATA_INIT */
@@ -162,7 +166,10 @@ typedef struct {
     uint16_t CVS;            /* 恒压源检测 */
     uint16_t CCS;            /* 恒流源检测 */
     
+    
     uint16_t AimMutex;       /* 红光互斥 */
+    uint16_t PdLightEn;      /* 开激光是否出光检测 */
+    uint16_t PdLight;        /* 出光检测阈值 */         
     
     uint8_t  ucCrc;          /* Check code */
 

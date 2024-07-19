@@ -156,7 +156,7 @@ int16_t StcGetTempH(void) {
 #endif /* STC_EN_DEV1 */
 
 #if STC_EN_DEV2
-    for (uint8_t n = 0; n < 10; n++) {
+    for (uint8_t n = 0; n < 2; n++) {
         if (sTempH > s_xTemp[1].sTemp[n]) {
             sTempH = s_xTemp[1].sTemp[n];
         }
@@ -227,12 +227,18 @@ int16_t StcGetTempHFrom(uint8_t st, uint8_t ed) {
 int16_t StcGetPdHFrom(void) {
     int16_t sPdH = 0;
 
-    for (uint8_t index = 25; index <= 29; index++) {
-        if (sPdH > s_xStcValue[index]) {
+    for (uint8_t index = 12; index <= 13; index++) {
+        if (sPdH < s_xStcValue[index]) {
             sPdH = s_xStcValue[index];
         }
     }
 
+    return sPdH;
+}
+
+int16_t StcGetPdLight(void) {
+    int16_t sPdH = 0;
+    sPdH = s_xStcValue[14];
     return sPdH;
 }
 

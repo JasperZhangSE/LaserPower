@@ -203,6 +203,8 @@ static void prvCliCmdCfgShow(cli_printf cliprintf, int argc, char** argv)
     cliprintf("APwrDuty : %d %%\n", th_APwmDuty);
     cliprintf("AimMutex : %d\n", th_AimMutex);
     cliprintf("CtrlMode : %d\n", th_CtrlMode);
+    cliprintf("PdLightEn: %d\n", th_PdLightEn);
+    cliprintf("PdLight  : %d\n", th_PdLight);
 }
 CLI_CMD_EXPORT(cfg_show, show config parameters, prvCliCmdCfgShow)
 
@@ -696,6 +698,45 @@ static void prvCliCmdCfgSetAimMutex(cli_printf cliprintf, int argc, char** argv)
     cliprintf("ok, recheck the config by cfg_show command\n");
 }
 CLI_CMD_EXPORT(cfg_set_aim_mutex, set aim mutex, prvCliCmdCfgSetAimMutex)
+
+static void prvCliCmdCfgSetPdLightEn(cli_printf cliprintf, int argc, char** argv)
+{
+    CHECK_CLI();
+    
+    if (argc != 2) {
+        cliprintf("cfg_set_pd_light_en EN\n");
+        return;
+    }
+    
+    uint16_t en = atoi(argv[1]);
+    
+    if (en == 0) {
+        th_PdLightEn = 0;
+    }
+    else {
+        th_PdLightEn = 1;
+    }
+    
+    DataSaveDirect();
+    cliprintf("ok, recheck the config by cfg_show command\n");
+}
+CLI_CMD_EXPORT(cfg_set_pd_light_en, set pd light en, prvCliCmdCfgSetPdLightEn)
+
+static void prvCliCmdCfgSetPdLight(cli_printf cliprintf, int argc, char** argv)
+{
+    CHECK_CLI();
+    
+    if (argc != 2) {
+        cliprintf("cfg_set_pd_light VALUE\n");
+        return;
+    }
+    
+    th_PdLight = atoi(argv[1]);
+
+    DataSaveDirect();
+    cliprintf("ok, recheck the config by cfg_show command\n");
+}
+CLI_CMD_EXPORT(cfg_set_pd_light, set pd light value, prvCliCmdCfgSetPdLight)
 
 static void Data_test(cli_printf cliprintf, int argc, char** argv)
 {
