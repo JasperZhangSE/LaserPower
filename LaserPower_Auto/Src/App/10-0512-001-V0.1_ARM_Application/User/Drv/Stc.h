@@ -60,6 +60,7 @@ Status_t DrvStcInit(void);
 Status_t DrvStcTerm(void);
 
 int16_t  StcGetTemp(StcDev_t xDev, StcTempNode_t xTempNode);
+int16_t  StcGetPd(StcDev_t xDev, StcTempNode_t xTempNode);
 /* Get highest temperature */
 int16_t  StcGetTempH(void);
 /* Get lowest temperature */

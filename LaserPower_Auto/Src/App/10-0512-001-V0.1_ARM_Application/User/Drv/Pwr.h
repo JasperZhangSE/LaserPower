@@ -74,6 +74,7 @@ extern "C" {
 typedef enum {
     PWR_OUTPUT_VOL,
     PWR_INPUT_VOL,
+    PWR_OUTPUT_CUR,
     PWR_STATUS,
 } PwrDataType_t;
 

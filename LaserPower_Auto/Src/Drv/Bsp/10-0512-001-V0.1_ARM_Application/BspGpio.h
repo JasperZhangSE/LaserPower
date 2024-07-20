@@ -194,9 +194,13 @@ extern "C" {
 #define AIM_EN_Pin_Port         GPIOD
 #define LASER_EN_Pin            GPIO_PIN_6
 #define LASER_EN_Pin_Port       GPIOC
+#define EX_MOD_EN_Pin           GPIO_PIN_2
+#define EX_MOD_EN_Pin_Port      GPIOB
 
 #define BEEP_SW_Pin             GPIO_PIN_13
 #define BEEP_SW_Pin_Port        GPIOC
+
+
 
 
 
@@ -205,7 +209,7 @@ typedef enum{
     MPWR_STAT_AC, MPWR_STAT_DC,
     APWR1_STAT, APWR2_STAT, APWR3_STAT, 
     QBH_ON, EX_CTRL_EN, WATER_PRESS, WATER_CHILLER, 
-    AIM_EN, LASER_EN,
+    AIM_EN, LASER_EN, EX_MOD_EN, 
 }GpioIn_t;
 
 typedef enum{

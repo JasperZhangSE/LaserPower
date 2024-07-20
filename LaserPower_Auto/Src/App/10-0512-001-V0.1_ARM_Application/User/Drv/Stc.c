@@ -144,6 +144,10 @@ int16_t StcGetTemp(StcDev_t xDev, StcTempNode_t xTempNode) {
     return s_xTemp[xDev].sTemp[xTempNode];
 }
 
+int16_t StcGetPd(StcDev_t xDev, StcTempNode_t xTempNode) {
+    return s_xTemp[xDev].sTemp[xTempNode];
+}
+
 int16_t StcGetTempH(void) {
     int16_t sTempH = 687;
 

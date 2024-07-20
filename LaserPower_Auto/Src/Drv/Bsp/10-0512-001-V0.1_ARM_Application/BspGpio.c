@@ -88,6 +88,7 @@ static GpioCtrl_t s_xGpioIn[] = {
 
     {AIM_EN,        PORT(AIM_EN),           PIN(AIM_EN),        GPIO_OFF,   GPIO_MODE_INPUT,    GPIO_PULLUP,    GPIO_SPEED_FREQ_HIGH},
     {LASER_EN,      PORT(LASER_EN),         PIN(LASER_EN),      GPIO_OFF,   GPIO_MODE_INPUT,    GPIO_PULLUP,    GPIO_SPEED_FREQ_HIGH},
+    {EX_MOD_EN,     PORT(EX_MOD_EN),        PIN(EX_MOD_EN),     GPIO_OFF,  GPIO_MODE_INPUT,    GPIO_PULLUP,    GPIO_SPEED_FREQ_HIGH},
 };
 
 /* Function */

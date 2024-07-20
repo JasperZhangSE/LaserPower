@@ -745,11 +745,15 @@ static void prvSendStatusInfo(void *pvInfo) {
     pxData->usAdc[3]      = AdcGet(ADC_CHAN_4);
     pxData->usAdc[4]      = AdcGet(ADC_CHAN_5);
     pxData->usAdc[5]      = AdcGet(ADC_CHAN_6);
-    //    pxData->usAdc[6]           = AdcGet(ADC_CHAN_7);    /* ©����1 */
-    //    pxData->usAdc[7]           = AdcGet(ADC_CHAN_7);    /* ©����2 */
-    //    pxData->usAdc[8]           = AdcGet(ADC_CHAN_7);    /* ©����3 */
+    
+    /* Old pd value */
+    pxData->usAdc[6]           = StcGetPd(STC_DEV_2, STC_TEMP_NODE_3);
+    pxData->usAdc[7]           = StcGetPd(STC_DEV_2, STC_TEMP_NODE_4);
+    pxData->usAdc[8]           = 0; /* This pd is used for non-light detection. */
 
-    pxData->usAdc[9]    = AdcGet(ADC_CHAN_8);
+    /* Led cs */
+    uint16_t LedCsVol = AdcGet(ADC_CHAN_8);
+    pxData->usAdc[9]    = LedCsVol < 50 ? 0 : LedCsVol;
 
     pxData->usDac[0]    = DacGet(DAC_CHAN_1);
     pxData->usDac[1]    = DacGet(DAC_CHAN_2);

@@ -236,6 +236,9 @@ int32_t Pwr2DataGet(uint32_t ulAddr, PwrDataType_t xType)
         case PWR_INPUT_VOL:
             r = s_M1_xData.usInVca; /* 0.1V */
             break;
+        case PWR_OUTPUT_CUR:
+            r = s_M1_xData.usOutCur * 0.1;
+            break;
         default:
             r = 0;
             break;
