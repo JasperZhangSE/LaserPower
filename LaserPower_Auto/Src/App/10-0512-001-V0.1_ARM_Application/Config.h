@@ -138,7 +138,7 @@ extern "C" {
 #define UART_TEST                (0)
 #define UART_ENABLE_MSP          (0)
 #define UART_TXBUF_SIZE          (128)
-#define UART_RXBUF_SIZE          (128)
+#define UART_RXBUF_SIZE          (512)
 
 /* Wdog module */
 #define WDOG_ENABLE              (1)

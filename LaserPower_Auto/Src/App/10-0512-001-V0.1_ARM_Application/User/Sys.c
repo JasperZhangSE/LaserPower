@@ -131,6 +131,7 @@ static uint8_t  s_ucAPwrCtrl2   = APWR_OFF;
 static uint8_t  s_ucAPwrCtrl3   = APWR_OFF;
 static uint8_t  aim_mutex_onoff = 1;
 static uint8_t  laser_on_pd_err = 1;
+static uint8_t  manual_ctrl_err = 1;
 
 /* Functions */
 Status_t AppSysInit(void)
@@ -174,20 +175,18 @@ Status_t AppSysInit(void)
         GpioSetOutput(MOD_EN, 0);
         GpioSetOutput(EX_AD_EN, 0);
         DacSet(APWR1_CTRL, CUR_TO_DAC(450 / 10.f));
-        SetADuty(0);
-        ToggleCcsStatus(1);
+        SetADuty(50);
+        ToggleCcsStatus(0);
         break;
 
     /* AD Mode */
     case 3:
-        //        s_bProc = false;
         GpioSetOutput(MOD_EN, 1);
         GpioSetOutput(EX_AD_EN, 1);
+        ToggleCcsStatus(0);
         break;
     }
-    
-    
-    
+
     return STATUS_OK;
 }
 
@@ -259,7 +258,7 @@ Status_t LaserOn(uint32_t ulCurrent, uint32_t ulSelect)
             TRACE("[%6d]     Cur %.1f\n", SYS_TICK_GET(), ulCurrent / 10.);
         }
         else {
-            TRACE("[%6d] Mnual ctrl laser on error\n");
+            return STATUS_ERR;
         }
         break;
     }
@@ -383,6 +382,7 @@ Status_t InfraredOn(void)
     State_t *pxState = &s_xState;
     if (pxState->xState == FSM_IDLE && th_AimMutex == 1) {
             pxState->xState    = FSM_INFRARED_INIT;
+            GpioSetOutput(MOD_EN, 0);
             pxState->ulCounter = 0;
             TRACE("[%6d] Idle         -> InfraredInit\n", SYS_TICK_GET());
             return STATUS_OK;
@@ -407,6 +407,7 @@ Status_t InfraredOff(void)
 
     if ((pxState->xState == FSM_INFRARED_RUN) && th_AimMutex == 1) {
         pxState->xState    = FSM_INFRARED_DONE;
+        GpioSetOutput(MOD_EN, 1);
         pxState->ulCounter = 0;
         TRACE("[%6d] InfraredRun  -> InfraredDone\n", SYS_TICK_GET());
 
@@ -466,13 +467,18 @@ Status_t ManualLaserCtrl(void)
 {
     State_t *pxState = &s_xState;
     
-    /* 通道电流检测 */
+    /* 通道检测 */
     uint16_t ExModEn = GpioGetInput(EX_MOD_EN);
     uint16_t ExAdVolCur = DAC_TO_CUR(AdcGet(ADC_CHAN_7));
     
     if ((pxState->xState == FSM_IDLE) && (ExModEn == 0)) {
         TRACE("[%6d] Manual ctrl laser on\n", SYS_TICK_GET());
-        LaserOn(ExAdVolCur, 0x07);
+        if ( LaserOn(ExAdVolCur, 0x07) == STATUS_ERR) {
+            TRACE("Manual ctrl laser on to error.\n");
+            TRACE("MPWR is not ready. Please make sure DC_OK\n");
+            manual_ctrl_err = 0;
+            pxState->xState = FSM_ERROR;
+        }
     }
     else if ((pxState->xState == FSM_LASERm_RUN) && (ExModEn == 1)) {
         TRACE("[%6d] Manual ctrl laser off\n", SYS_TICK_GET());
@@ -648,25 +654,16 @@ static void prvFsmReady(State_t *pxState)
 static void prvFsmIdle(State_t *pxState)
 {
     SYS_SAVELASTSTATES();
-    if (th_CtrlMode == 3) {
-        /* 外控模式 */
-        if (!prvChkPwr()) {
-            pxState->xState         = FSM_ERROR;
-            pxState->ulCounter      = 0;
-            th_SysStatus.WORK_LASER = 0;
-            TRACE("[%6d] Idle    -> Error\n", SYS_TICK_GET());
-        }
+
+    if (!prvChkAPwr()) {
+        /* 内控模式 */
+        pxState->xState         = FSM_ERROR;
+        pxState->ulCounter      = 0;
+        th_SysStatus.WORK_LASER = 0;
+        prvEnterFsm();
+        TRACE("[%6d] Idle    -> Error\n", SYS_TICK_GET());
     }
-    else {
-        if (!prvChkPwr()) {
-            /* 内控模式 */
-            pxState->xState         = FSM_ERROR;
-            pxState->ulCounter      = 0;
-            th_SysStatus.WORK_LASER = 0;
-            prvEnterFsm();
-            TRACE("[%6d] Idle    -> Error\n", SYS_TICK_GET());
-        }
-    }
+
 }
 
 static void prvFsmLaserSInit(State_t *pxState)
@@ -871,7 +868,7 @@ static void prvFsmInfraredInit(State_t *pxState)
 static void prvFsmInfraredRun(State_t *pxState)
 {
     SYS_SAVELASTSTATES();
-    if (!prvChkPwr()) {
+    if (!prvChkAPwr()) {
         pxState->xState         = FSM_ERROR;
         pxState->ulCounter      = 0;
         th_SysStatus.WORK_LASER = 0;
@@ -892,25 +889,25 @@ static void prvFsmInfraredDone(State_t *pxState)
 
 static void prvFsmError(State_t *pxState)
 {
-    SYS_SAVELASTSTATES();
+//    SYS_SAVELASTSTATES();
+    
+    GpioSetOutput(FAULT, 1);
 
     GpioSetOutput(BEEP_SW, 1);
     osDelay(BEEP_DELAY);
     GpioSetOutput(BEEP_SW, 0);
     osDelay(BEEP_DELAY);
-    GpioSetOutput(BEEP_SW, 1);
-    osDelay(BEEP_DELAY);
-    GpioSetOutput(BEEP_SW, 0);
-    osDelay(BEEP_DELAY);
+
     
     if (prvChkPwr() && laser_on_pd_err == 1) {
-        
-//        TRACE("[%6d] Error        -> Idle\n", SYS_TICK_GET());
+
         GpioSetOutput(BEEP_SW, 0);
         
         /* 错误状态下 指示光变化处理 */
         if (th_CtrlMode == 3) {
             GpioSetOutput(MOD_EN, 1);
+            
+            GpioSetOutput(FAULT, 0);
             
             uint8_t AimEn = GpioGetInput(AIM_EN);
             if (AimEn == 0){
@@ -929,7 +926,25 @@ static void prvFsmError(State_t *pxState)
         
         
     }
-
+    
+    if (pxState->xLastState == FSM_IDLE && manual_ctrl_err == 1) {
+        if (prvChkAPwr()) {
+            pxState->xState    = FSM_IDLE;
+            pxState->ulCounter = 0;
+            TRACE("[%6d] Error        -> Idle\n", SYS_TICK_GET());
+        }
+    }
+    
+    uint16_t ModEnStatus = GpioGetInput(EX_MOD_EN);
+    if (manual_ctrl_err == 0 && ModEnStatus == 1) {
+        pxState->xState    = FSM_IDLE;
+        pxState->ulCounter = 0;
+        manual_ctrl_err = 1;
+        TRACE("[%6d] Error        -> Idle\n", SYS_TICK_GET());
+    }
+    else if (manual_ctrl_err == 0 && ModEnStatus == 0) {
+        TRACE("[%6d] Please make sure DC_OK.\n", SYS_TICK_GET());
+    }
 }
 
 static bool prvInitChkMPwr(void)
@@ -1072,6 +1087,13 @@ static bool prvChkAPwr(void)
     uint16_t usLaserEn = GpioGetInput(LASER_EN);
     if (usLaserEn == 1) {
         TRACE("[%6d]     LASER_EN is off\n", SYS_TICK_GET());
+        return false;
+    }
+    
+    /* 互锁检测 */
+    uint16_t usSafeLock = GpioGetInput(SAFE_LOCK);
+    if (usSafeLock == 1) {
+        TRACE("[%6d]     SAFE_INTER_LOCK is off\n", SYS_TICK_GET());
         return false;
     }
 
@@ -1250,7 +1272,8 @@ static void prvProcPanelLed(void)
     
     /* Power led */
     /* Led ac ok */
-    if (s_MPWR_STAT_AC == 1 && s_PWR_INPUT_VOL >= 1000 /* 0.1V */){
+//    TRACE("PWR_LED_RUN \n");
+    if ( s_PWR_INPUT_VOL >= 1000 /* 0.1V */){
         GpioSetOutput(LED_AC_OK, LED_ON);
         GpioSetOutput(LED_AC_FAIL, LED_OFF);
     }
@@ -1260,7 +1283,7 @@ static void prvProcPanelLed(void)
     }
     
     /* Led dc ok */
-    if ((s_MPWR_STAT_DC == 1) && (s_PWR_OUTPUT_VOL >= 650)){
+    if (s_PWR_OUTPUT_VOL >= 650){
         GpioSetOutput(LED_DC_OK, LED_ON);
         GpioSetOutput(LED_DC_FAIL, LED_OFF);
     }
@@ -1270,11 +1293,7 @@ static void prvProcPanelLed(void)
     }
     
     /* Led can */
-    if (s_MPWR_STAT_AC == 0) {
-        GpioSetOutput(LED_CAN_OK, LED_OFF);
-        GpioSetOutput(LED_CAN_FAIL, LED_OFF);
-    }
-    else if (s_PWR_INPUT_VOL >= 1000 /*0.1V*/) {
+    if (s_PWR_INPUT_VOL >= 1000 /*0.1V*/) {
         GpioSetOutput(LED_CAN_OK, LED_ON);
         GpioSetOutput(LED_CAN_FAIL, LED_OFF);
     }
@@ -1489,16 +1508,141 @@ static void prvCliCmdPwmGet(cli_printf cliprintf, int argc, char **argv)
 }
 CLI_CMD_EXPORT(pwm_get, pwm get f d, prvCliCmdPwmGet)
 
-static void prvCliCmdShowFsmStatus(cli_printf cliprintf, int argc, char **argv)
+//static void prvCliCmdShowFsmStatus(cli_printf cliprintf, int argc, char **argv)
+//{
+//    CHECK_CLI();
+
+//    if (argc != 1) {
+//        cliprintf("show_fsm_status\n");
+//        return;
+//    }
+//    
+//    State_t *pxState = &s_xState;
+//    cliprintf("FSM_State = %d\n", pxState->xState);
+//}
+//CLI_CMD_EXPORT(show_fsm_status, show fsm status, prvCliCmdShowFsmStatus)
+
+//static void prvCliCmdCtrlStatus(cli_printf cliprintf, int argc, char **argv)
+//{
+//    CHECK_CLI();
+
+//    if (argc != 1) {
+//        cliprintf("show_fsm_status\n");
+//        return;
+//    }
+//    uint16_t ModEnStatus = GpioGetInput(MOD_EN);
+//    
+//    cliprintf("MOD_EN  :  %d\n", ModEnStatus);
+//    
+//}
+//CLI_CMD_EXPORT(show_ctrl_status, show fsm status, prvCliCmdCtrlStatus)
+
+static void prvCliCmdSysDiag(cli_printf cliprintf, int argc, char **argv)
 {
     CHECK_CLI();
 
     if (argc != 1) {
-        cliprintf("show_fsm_status\n");
+        cliprintf("sys_diag\n");
         return;
     }
     
+    
+    uint16_t ModEnStatus = GpioGetInput(EX_MOD_EN);
+    uint16_t AimEnStatus = GpioGetInput(AIM_EN);
+    uint16_t LaserEnStatus = GpioGetInput(LASER_EN);
+    uint16_t SafeInterLOck = GpioGetInput(SAFE_LOCK);
+    
+    uint16_t ModEn         = GpioGetOutput(MOD_EN);
+    uint16_t ExAdEn        = GpioGetOutput(EX_AD_EN);
+    
+    int Tim4Ccr3 = TIM4->CCR3;
+    int Tim4Psc  = TIM4->PSC;
+    bool IsPwmStart = (TIM4->CR1 & TIM_CR1_CEN) && (TIM4->CCER & TIM_CCER_CC3E);
+
     State_t *pxState = &s_xState;
-    cliprintf("FSM_State = %d\n", pxState->xState);
+    switch ((int)(pxState->xState)) {
+        case 0:
+            cliprintf("FSM_STATUS  :  FSM_START\n");
+        break;
+        
+        case 1:
+            cliprintf("FSM_STATUS  :  FSM_INIT_MPWR\n");
+        break;
+    
+        case 2:
+            cliprintf("FSM_STATUS  :  FSM_READY\n");
+        break;
+        
+        case 3:
+            cliprintf("FSM_STATUS  :  FSM_IDLE\n");
+        break;
+        
+        case 4:
+            cliprintf("FSM_STATUS  :  FSM_LASERs_INIT\n");
+        break;
+        
+        case 5:
+            cliprintf("FSM_STATUS  :  FSM_LASERs_RUN\n");
+        break;
+        
+        case 6:
+            cliprintf("FSM_STATUS  :  FSM_LASERs_DONE\n");
+        break;
+        
+        case 7:
+            cliprintf("FSM_STATUS  :  FSM_LASERm_INIT\n");
+        break;
+        
+        case 8:
+            cliprintf("FSM_STATUS  :  FSM_LASERm_RUN\n");
+        break;
+        
+        case 9:
+            cliprintf("FSM_STATUS  :  FSM_LASERm_DONE\n");
+        break;
+        
+        case 10:
+            cliprintf("FSM_STATUS  :  FSM_INFRARED_INIT\n");
+        break;
+        
+        case 11:
+            cliprintf("FSM_STATUS  :  FSM_INFRARED_RUN\n");
+        break;
+        
+        case 12:
+            cliprintf("FSM_STATUS  :  FSM_INFRARED_DONE\n");
+        break;
+    }
+    cliprintf("\n");
+    
+    cliprintf("Status: \n");
+    cliprintf("LaserEn          :   %d\n", LaserEnStatus == 0 ? 1 : 0);
+    cliprintf("ExModEn          :   %d\n", ModEnStatus == 0 ? 1 : 0);
+    cliprintf("AimEn            :   %d\n", AimEnStatus == 0 ? 1 : 0);
+    
+    cliprintf("ModEn            :   %d\n", ModEn == 0 ? 0 : 1);
+    cliprintf("ExAdEn           :   %d\n", ExAdEn == 0 ? 0 : 1);
+    
+    cliprintf("IsPwmStart       :   %d\n", IsPwmStart);
+    cliprintf("Tim4Ccr3         :   %d\n", Tim4Ccr3);
+    cliprintf("Tim4Psc          :   %d\n", Tim4Psc);
+    cliprintf("\n");
+    
+    cliprintf("Warnning:\n");
+    cliprintf("SafeINterLOck      : %d\n", SafeInterLOck == 0 ? 0 : 1);
+    cliprintf("STATUS_MPWR        : %d\n", th_SysStatus.STATUS_MPWR);
+    cliprintf("ALARM_EMCY_STOP    : %d\n", th_SysStatus.ALARM_EMCY_STOP);
+    cliprintf("ALARM_WATER_CHILLER: %d\n", th_SysStatus.ALARM_WATER_CHILLER);
+    cliprintf("ALARM_WATER_PRESS  : %d\n", th_SysStatus.ALARM_WATER_PRESS);
+    cliprintf("ALARM_QBH          : %d\n", th_SysStatus.ALARM_QBH);
+    cliprintf("ALARM_OT           : %d\n", th_SysStatus.ALARM_OT);
+    cliprintf("WARN_OT            : %d\n", th_SysStatus.WARN_OT);
+    cliprintf("ALARM_PD           : %d\n", th_SysStatus.ALARM_PD);
+    cliprintf("WARN_PD            : %d\n", th_SysStatus.WARN_PD);
+    cliprintf("ALARM_WET          : %d\n", th_SysStatus.ALARM_WET);
+    cliprintf("WORK_INFRARED      : %d\n", th_SysStatus.WORK_INFRARED);
+    cliprintf("WORK_LASER         : %d\n", th_SysStatus.WORK_LASER);
+    cliprintf("RUN                : %d\n", th_SysStatus.RUN);
+    
 }
-CLI_CMD_EXPORT(show_fsm_status, show fsm status, prvCliCmdShowFsmStatus)
+CLI_CMD_EXPORT(sys_diag, show sys diag, prvCliCmdSysDiag)

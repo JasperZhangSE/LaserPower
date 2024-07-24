@@ -101,9 +101,9 @@ extern "C" {
 #define CAN_TX_Pin_Port         GPIOA
 
 #define ETH_RST_Pin             GPIO_PIN_14
-#define ETH_RST_Pin_Port        GPIOB
-#define ETH_EN_Pin              GPIO_PIN_15
-#define ETH_EN_Pin_Port         GPIOB
+#define ETH_RST_Pin_Port        GPIOE
+//#define ETH_EN_Pin              GPIO_PIN_15
+//#define ETH_EN_Pin_Port         GPIOE
 #define ETH_OSCIN_Pin           GPIO_PIN_1
 #define ETH_OSCIN_Pin_Port      GPIOA
 #define ETH_MDIO_Pin            GPIO_PIN_2
@@ -196,19 +196,18 @@ extern "C" {
 #define LASER_EN_Pin_Port       GPIOC
 #define EX_MOD_EN_Pin           GPIO_PIN_2
 #define EX_MOD_EN_Pin_Port      GPIOB
+#define SAFE_LOCK_Pin           GPIO_PIN_15
+#define SAFE_LOCK_Pin_Port      GPIOE
 
 #define BEEP_SW_Pin             GPIO_PIN_13
 #define BEEP_SW_Pin_Port        GPIOC
-
-
-
 
 
 /* Types */
 typedef enum{
     MPWR_STAT_AC, MPWR_STAT_DC,
     APWR1_STAT, APWR2_STAT, APWR3_STAT, 
-    QBH_ON, EX_CTRL_EN, WATER_PRESS, WATER_CHILLER, 
+    QBH_ON, EX_CTRL_EN, WATER_PRESS, WATER_CHILLER, SAFE_LOCK, 
     AIM_EN, LASER_EN, EX_MOD_EN, 
 }GpioIn_t;
 
@@ -217,12 +216,14 @@ typedef enum{
     LED1, LED2, LED3, LED4, LED5, LED6, 
     LED_CAN_OK, LED_CAN_FAIL, LED_AC_OK, LED_AC_FAIL, LED_DC_OK, LED_DC_FAIL,
     RS485a_EN,
-    ETH_RST, ETH_EN, 
+    ETH_RST,
+//    ETH_EN, 
     MPWR_EN,
     APWR1_EN, APWR2_EN, APWR3_EN, 
     I2C_SCL, I2C_SDA,
     FAULT, EX_AD_EN, MOD_EN,
     BEEP_SW,
+    
 }GpioOut_t;
 
 /* Functions */

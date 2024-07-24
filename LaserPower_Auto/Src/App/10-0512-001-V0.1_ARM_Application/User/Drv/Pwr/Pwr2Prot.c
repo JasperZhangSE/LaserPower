@@ -21,11 +21,12 @@
 /* Includes */
 #include "Include.h"
 
+#define PWR2_RTOS 1
 /* Pragmas */
 #pragma diag_suppress 177   /* warning: #177-D: function "FUNC" was set but never used */
 
 /* Debug config */
-#if PWR_DEBUG
+#if PWR_DEBUG || 0
     #undef TRACE
     #define TRACE(...)  DebugPrintf(__VA_ARGS__)
 #else
@@ -39,6 +40,21 @@
     #undef ASSERT
     #define ASSERT(...)
 #endif /* PWR_DEBUG */
+
+#if PWR2_RTOS
+static osMutexId s_xPwr2Mutex;
+#define PWR2_MUTEX_INIT()                                                                                            \
+    do {                                                                                                               \
+        osMutexDef(Pwr2Mutex);                                                                                          \
+        s_xPwr2Mutex = osMutexCreate(osMutex(Pwr2Mutex));                                                                \
+    } while (0)
+#define PWR2_LOCK()   osMutexWait(s_xPwr2Mutex, osWaitForever)
+#define PWR2_UNLOCK() osMutexRelease(s_xPwr2Mutex)
+#else
+#define PWR2_MUTEX_INIT()
+#define PWR2_LOCK()
+#define PWR2_UNLOCK()
+#endif /* SW_I2C_RTOS */
 
 /* Local defines */
 //#define PWR_ADDR                1
@@ -115,11 +131,13 @@ static QueueHandle_t s_xQueue;
 Status_t Pwr2ProtInit(void)
 {
     if (!s_bInit) {
+        PWR2_MUTEX_INIT();
         memset(&s_M2_xData, 0, sizeof(s_M2_xData));
         memset(&s_M1_xData, 0, sizeof(s_M1_xData));
         memset(&s_M3_xData, 0, sizeof(s_M3_xData));
         s_xQueue = xQueueCreate(1/*Queue length*/, sizeof(Msg_t)/*Queue item size*/);
         s_bInit = true;
+        
     }
     return STATUS_OK;
 }
@@ -132,7 +150,9 @@ Status_t Pwr2ProtTerm(void)
 
 Status_t Pwr2Update(void)
 {
-
+    
+    PWR2_LOCK();
+    TRACE("PWR_MUTEX\n");
 #if 1
     prvGetStatus(PWR2_M2_ADDR);
     prvGetCfgVol(PWR2_M2_ADDR);
@@ -142,6 +162,7 @@ Status_t Pwr2Update(void)
 #endif
 
 #if 1
+    memset(&s_M1_xData, 0, sizeof(s_M1_xData));
     prvGetStatus(PWR2_M1_ADDR);
     prvGetCfgVol(PWR2_M1_ADDR);
     prvGetCfgCur(PWR2_M1_ADDR);
@@ -158,6 +179,8 @@ Status_t Pwr2Update(void)
     prvGetEnvTemp(PWR2_M3_ADDR);
 #endif
     
+    PWR2_UNLOCK();
+    TRACE("PWR_UNLOCK\n");
     return STATUS_OK;
 }
 
@@ -222,6 +245,7 @@ Status_t Pwr2Output(uint32_t ulPwr2Addr, uint8_t ucOnOff)
 
 int32_t Pwr2DataGet(uint32_t ulAddr, PwrDataType_t xType)
 {
+    PWR2_LOCK();
     int32_t r = 0;
     switch (ulAddr)
     {
@@ -267,8 +291,11 @@ int32_t Pwr2DataGet(uint32_t ulAddr, PwrDataType_t xType)
             default:
                 r = 0;
                 break;
-        }break;            
+        }break;        
     }
+    PWR2_UNLOCK();
+    
+//    memset(&s_M1_xData, 0, sizeof(s_M1_xData));
     
     return r;
 }
@@ -728,5 +755,6 @@ static void prvCliCmdPwr2Status(cli_printf cliprintf, int argc, char** argv)
     cliprintf("    输入电压(Vca): %.1f V\n", s_M3_xData.usInVca / 32.);
     cliprintf("    环境温度     : %.1f ℃\n",s_M3_xData.sTemp * 0.1);
     cliprintf("\n");
+
 }
 CLI_CMD_EXPORT(pwr2_status, show power(18kw) status, prvCliCmdPwr2Status)

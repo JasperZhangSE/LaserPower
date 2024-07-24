@@ -21,6 +21,7 @@
 #include <string.h>
 #include <cmsis_os.h>
 #include "Uart/Uart.h"
+#include "Debug/Debug.h"
 
 #if UART_ENABLE
 
@@ -29,7 +30,7 @@
 #pragma diag_suppress 188 /* warning: #188-D: enumerated type mixed with another type */
 
 /* Debug config */
-#if UART_DEBUG
+#if UART_DEBUG || 1
 #undef TRACE
 #define TRACE(...) DebugPrintf(__VA_ARGS__)
 #else
@@ -58,7 +59,8 @@ typedef struct {
 
     uint8_t            ucTxBuf[UART_TXBUF_SIZE];
     uint8_t            ucRxBuf[UART_RXBUF_SIZE];
-
+    uint16_t           RxLen;
+    
     UartIsrFunc_t      pxUartIsrFunc;
     UartIsrFunc_t      pxDmaRxIsrFunc;
     UartIsrFunc_t      pxDmaTxIsrFunc;
@@ -107,7 +109,7 @@ Status_t UartDelete(UartHandle_t xHandle) {
 }
 
 Status_t UartConfigCb(UartHandle_t xHandle, UartProcRxFunc_t pxProcRxFunc, UartIsrFunc_t pxUartIsrFunc,
-                      UartIsrFunc_t pxDmaRxIsrFunc, UartIsrFunc_t pxDmaTxIsrFunc, void *pvIsrPara) {
+    UartIsrFunc_t pxDmaRxIsrFunc, UartIsrFunc_t pxDmaTxIsrFunc, void *pvIsrPara) {
     UartCtrl_t *pxCtrl = UART_GET_CTRL(xHandle);
 
     ASSERT(NULL != pxCtrl);
@@ -116,6 +118,8 @@ Status_t UartConfigCb(UartHandle_t xHandle, UartProcRxFunc_t pxProcRxFunc, UartI
     pxCtrl->pxDmaTxIsrFunc = pxDmaTxIsrFunc;
     pxCtrl->pxProcRxFunc   = pxProcRxFunc;
     pxCtrl->pvIsrPara      = pvIsrPara;
+        
+    pxCtrl->RxLen = 0;
     return STATUS_OK;
 }
 
@@ -138,7 +142,8 @@ Status_t UartConfigCom(UartHandle_t xHandle, USART_TypeDef *pxInstance, uint32_t
 
     if (pxCtrl->pxUartIsrFunc) {
         /* IDLE Interrupt Configuration */
-        SET_BIT(pxInstance->CR1, USART_CR1_IDLEIE);
+//        SET_BIT(pxInstance->CR1, USART_CR1_IDLEIE);
+        __HAL_UART_ENABLE_IT(&(pxCtrl->hUart), UART_IT_IDLE);
         HAL_NVIC_SetPriority(xIrq, 5, 0);
         HAL_NVIC_EnableIRQ(xIrq);
     }
@@ -146,6 +151,11 @@ Status_t UartConfigCom(UartHandle_t xHandle, USART_TypeDef *pxInstance, uint32_t
     /* Start DMA receive */
     if (pxCtrl->hDmaRx.Instance) {
         HAL_UART_Receive_DMA(&(pxCtrl->hUart), (uint8_t *)(pxCtrl->ucRxBuf), UART_RXBUF_SIZE);
+    }
+    else {
+        
+        TRACE("Enable uart it rxne.\n");
+        __HAL_UART_ENABLE_IT(&(pxCtrl->hUart), UART_IT_RXNE);
     }
 
     return STATUS_OK;
@@ -384,18 +394,43 @@ void UartIsrCb(void *p) {
             else {
                 pxCtrl->hUart.State = HAL_UART_STATE_READY;
             }
+//            /* Receive & process the data */
+//            {
+//                pxCtrl->ucRxBuf[0] = pxCtrl->hUart.Instance->DR;
+//                if (pxCtrl->pxProcRxFunc) {
+//                    (pxCtrl->pxProcRxFunc)((uint8_t *)pxCtrl->ucRxBuf, 1, pxCtrl->pvIsrPara);
+//                }
+//            }
+            
             /* Receive & process the data */
             {
-                pxCtrl->ucRxBuf[0] = pxCtrl->hUart.Instance->DR;
                 if (pxCtrl->pxProcRxFunc) {
-                    (pxCtrl->pxProcRxFunc)((uint8_t *)pxCtrl->ucRxBuf, 1, pxCtrl->pvIsrPara);
+                    (pxCtrl->pxProcRxFunc)((uint8_t *)pxCtrl->ucRxBuf, pxCtrl->RxLen, pxCtrl->pvIsrPara);
+                    memset(pxCtrl->ucRxBuf, 0, UART_RXBUF_SIZE);
+                    pxCtrl->RxLen = 0;
                 }
             }
+            
             /* Clear interrupt flag */
             __HAL_UART_CLEAR_IDLEFLAG(&(pxCtrl->hUart));
         }
+        
+        if ((__HAL_UART_GET_FLAG(&(pxCtrl->hUart), UART_FLAG_RXNE) != RESET)) {
+            
+            if (pxCtrl->hUart.State == HAL_UART_STATE_BUSY_TX_RX) {
+                pxCtrl->hUart.State = HAL_UART_STATE_BUSY_TX;
+            }
+            else {
+                pxCtrl->hUart.State = HAL_UART_STATE_READY;
+            }
+            
+            /* Receive & process the data */
+            {
+                pxCtrl->ucRxBuf[pxCtrl->RxLen] = pxCtrl->hUart.Instance->DR;
+                pxCtrl->RxLen++;
+            }
+        }
     }
-
     return;
 }
 

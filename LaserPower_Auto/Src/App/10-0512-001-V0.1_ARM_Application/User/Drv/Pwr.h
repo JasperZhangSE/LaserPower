@@ -58,6 +58,10 @@ extern "C" {
 #define APWR3_CUR     ADC_CHAN_5
 #define APWR3_VOL     ADC_CHAN_6
 
+#define RANGE_10_50         0
+#define RANGE_10_45         1
+
+#if RANGE_10_50
 #define DAC_TO_CUR(d) ((d) * DAC_VREF * 50. /*A*/ / 4096 / 2500 /*mV*/)
 #define ADC_TO_CUR(d) ((d) * ADC_VREF * 50. /*A*/ / 4096 / 2500 /*mV*/)
 
@@ -69,6 +73,21 @@ extern "C" {
 #define CUR_TO_FREQ(d) ((((float)(d) / 500.0) * (5000.0 - 10.0)) + 10.0)
 #define PSC_TO_FREQ(d) (Fclk / (((float)(TIM4->ARR) + 1.0) * ((float)(d) + 1.0)))
 #define PSC_TO_CUR(d)  ((((Fclk / (((float)(TIM4->ARR) + 1.0) * ((float)(d) + 1.0))) - 10.0) * 50.0) / (5000.0 - 10.0))
+#endif
+
+#if RANGE_10_45
+#define DAC_TO_CUR(d) ((d) * DAC_VREF * 45. /*A*/ / 4096 / 2250 /*mV*/)
+#define ADC_TO_CUR(d) ((d) * ADC_VREF * 45. /*A*/ / 4096 / 2250 /*mV*/)
+
+#define ADC_TO_VOL(d, a) (PwrDataGet(a, PWR_OUTPUT_VOL) * 0.1 /*V*/ - ((d) * ADC_VREF / 4096 * (th_AdVolPara * 0.001) * 0.001 /*V*/))
+
+#define CUR_TO_DAC(d)  ((d) * 4096 * 2250 /*mV*/ / DAC_VREF / 45 /*A*/)
+#define CUR_TO_ADC(d)  ((d) * 4096 * 2250 /*mV*/ / ADC_VREF / 45 /*A*/)
+
+#define CUR_TO_FREQ(d) ((((float)(d) / 450.0) * (5000.0 - 10.0)) + 10.0)
+#define PSC_TO_FREQ(d) (Fclk / (((float)(TIM4->ARR) + 1.0) * ((float)(d) + 1.0)))
+#define PSC_TO_CUR(d)  ((((Fclk / (((float)(TIM4->ARR) + 1.0) * ((float)(d) + 1.0))) - 10.0) * 45.0) / (5000.0 - 10.0))
+#endif
 
 /* Types */
 typedef enum {

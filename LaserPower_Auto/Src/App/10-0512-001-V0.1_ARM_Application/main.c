@@ -59,9 +59,11 @@ int main(void) {
     Aht30Init();
     AppCliInit();
     AppDataInit();
-    Esp32C3Init();
+    
     AppComInit();
     AppSysInit();
+    
+    Esp32C3Init();
     /* Start scheduler */
     osKernelStart();
 

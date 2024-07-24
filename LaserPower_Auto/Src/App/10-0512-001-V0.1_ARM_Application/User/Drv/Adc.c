@@ -229,8 +229,8 @@ static void prvCliCmdAdcStatus(cli_printf cliprintf, int argc, char **argv) {
     cliprintf("    ADC4: %4d, %4d mV [AUX2_VS]\n", s_usData[3], ADC_TO_MVOL(s_usData[3]));
     cliprintf("    ADC5: %4d, %4d mV [AUX3_CS]\n", s_usData[4], ADC_TO_MVOL(s_usData[4]));
     cliprintf("    ADC6: %4d, %4d mV [AUX3_VS]\n", s_usData[5], ADC_TO_MVOL(s_usData[5]));
-    //cliprintf("    ADC7: %4d, %4d mV [PD_VS  ]\n", s_usData[6], ADC_TO_MVOL(s_usData[6]));
-    cliprintf("    ADC7: RESERVED\n");
+    cliprintf("    ADC7: %4d, %4d mV [AD_VS  ]\n", s_usData[6], ADC_TO_MVOL(s_usData[6]));
+//    cliprintf("    ADC7: RESERVED\n");
     cliprintf("    ADC8: %4d, %4d mV [LED_CUR]\n", s_usData[7], ADC_TO_MVOL(s_usData[7]));
 }
 CLI_CMD_EXPORT(adc_status, show adc status, prvCliCmdAdcStatus)

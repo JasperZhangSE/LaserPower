@@ -41,30 +41,65 @@
 #include "Uart/Uart.h"
 #include "Cli/Cli.h"
 #include "User/Cli.h"
+#include "Debug/Debug.h"
+#include "Rbuf/Rbuf.h"
+
+/* Debug config */
+#if ESP_DEBUG || 1
+#undef TRACE
+#define TRACE(...) DebugPrintf(__VA_ARGS__)
+#else
+#undef TRACE
+#define TRACE(...)
+#endif /* ESP_DEBUG */
+
+#define MAX_MSG_SIZE 128
 
 /* Forward functions */
 static Status_t prvUartRecvWbc(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara);
 
-UartHandle_t g_Esp32C3Uart = NULL;
+UartHandle_t g_Esp32C3Uart    = NULL;
+static RbufHandle_t s_xEspRbuf   = NULL;
+
+static uint8_t      s_ucEspRxBuffer[256];
+
+static void prvEsp32C3Task(void *pvPara)
+{
+    while (1) {
+        static uint8_t  s_ucRecvBuf[MAX_MSG_SIZE];
+        uint16_t        usRecvd = (uint16_t)RbufRead(s_xEspRbuf, s_ucRecvBuf, MAX_MSG_SIZE);
+        if (usRecvd) {
+            TRACE("EspCmd = %s\n", s_ucRecvBuf);
+        }
+        osDelay(10);
+    }
+}
 
 Status_t Esp32C3Init(void) {
+    
+    xTaskCreate(prvEsp32C3Task, "tEsp32", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+    
+    RbufInit();
+    s_xEspRbuf = RbufCreate();
+    RbufConfig(s_xEspRbuf, s_ucEspRxBuffer, sizeof(s_ucEspRxBuffer), 3 /*Rbuf msg queue size*/, 5 /*Rbuf msg queue wait ms*/);
     
     g_Esp32C3Uart = UartCreate();
     UartConfigCb(g_Esp32C3Uart, prvUartRecvWbc, UartIsrCb, NULL, NULL, NULL);
     UartConfigCom(g_Esp32C3Uart, UART5, 115200, UART5_IRQn);
-    
+
     BtInit(g_Esp32C3Uart);
     return STATUS_OK;
 }
 
 Status_t BtInit(UartHandle_t UartHandle)
 {
-    SendAtCmd(UartHandle, "AT+BLEINIT=2\r");
-    SendAtCmd(UartHandle, "AT+BLEGATTSSRVCRE\r");
-    SendAtCmd(UartHandle, "AT+BLEGATTSSRVSTART\r");
-    SendAtCmd(UartHandle, "AT+BLEADVPARAM=50,50,0,0,7,0,,\r");
-    SendAtCmd(UartHandle, "AT+BLEADVDATAEX=\"LaserPower\",\"A002\",\"0102030405\",1\r");
-    
+    SendAtCmd(UartHandle, "AT+BLEINIT=2\r\n");
+    SendAtCmd(UartHandle, "AT+BLEGATTSSRVCRE\r\n");
+    SendAtCmd(UartHandle, "AT+BLEGATTSSRVSTART\r\n");
+    SendAtCmd(UartHandle, "AT+BLEADVPARAM=50,50,0,0,7,0,,\r\n");
+    SendAtCmd(UartHandle, "AT+BLEADVDATAEX=\"LaserPower\",\"A002\",\"0102030405\",1\r\n");
+    SendAtCmd(UartHandle, "AT+BLEADVSTART\r\n");
+
 //    SendAtCmd(UartHandle, "AT+BLESPPCFG=1,1,6,1,3\r");
 //    SendAtCmd(UartHandle, "AT+BLESPP\r");
     return STATUS_OK;
@@ -72,14 +107,23 @@ Status_t BtInit(UartHandle_t UartHandle)
 
 Status_t SendAtCmd(UartHandle_t UartHandle, const char * CmdStr)
 {
-    UartBlkSend(UartHandle, (uint8_t *)CmdStr, strlen(CmdStr), 10);
-    osDelay(1000);
+    UartBlkSend(UartHandle, (uint8_t *)CmdStr, strlen(CmdStr), 500);
+    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED) {
+        HAL_Delay(1000);
+    }
+    else if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
+        osDelay(1000);
+    }
+
     return STATUS_OK;
 }
 
 static Status_t prvUartRecvWbc(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara) {
-    UartBlkSend(g_Esp32C3Uart, pucBuf, usLength, 10);
+    
+    TRACE("pucBuf = %s\n", pucBuf);
     return STATUS_OK;
+    
+//    return (usLength == RbufWrite(s_xEspRbuf, pucBuf, usLength)) ? STATUS_OK : STATUS_ERR;
 }
 
 static void prvCliCmdWbcSend(cli_printf cliprintf, int argc, char **argv) {
@@ -91,6 +135,7 @@ static void prvCliCmdWbcSend(cli_printf cliprintf, int argc, char **argv) {
     }
     
     uint8_t *pucBuffer = (uint8_t *)argv[1];
+    sprintf((char *)pucBuffer, "%s\r\n", pucBuffer);
 
     cliprintf("cmd : %s\n", pucBuffer);
     
@@ -124,17 +169,17 @@ static void prvCliCmdBtTrs(cli_printf cliprintf, int argc, char **argv) {
     
     int mode = atoi(argv[1]);
     
-    if (mode == 1){
-        SendAtCmd(g_Esp32C3Uart, "AT+BLESPPCFG=1,1,6,1,3\r");
+    if (mode != 0){
+        SendAtCmd(g_Esp32C3Uart, "AT+BLESPPCFG=1,1,6,1,3\r\n");
         osDelay(1000);
-        SendAtCmd(g_Esp32C3Uart, "AT+BLESPP\r");
+        SendAtCmd(g_Esp32C3Uart, "AT+BLESPP\r\n");
         
         cliprintf("Enter transprent mode\n");
     }
     else{
         SendAtCmd(g_Esp32C3Uart, "+++");
         osDelay(1000);
-        SendAtCmd(g_Esp32C3Uart, "AT\r");
+        BtInit(g_Esp32C3Uart);
         
         cliprintf("Exit transprent mode\n");
     }
@@ -142,6 +187,32 @@ static void prvCliCmdBtTrs(cli_printf cliprintf, int argc, char **argv) {
     return;
 }
 CLI_CMD_EXPORT(bt_trs, Bluetooth transparent mode, prvCliCmdBtTrs)
+
+static void prvCliCmdBtRestore(cli_printf cliprintf, int argc, char **argv) {
+    CHECK_CLI();
+
+    if (argc != 1) {
+        cliprintf("bt_restore\n");
+        return;
+    }
+
+    SendAtCmd(g_Esp32C3Uart, "AT+RESTORE\r\n");
+    return;
+}
+CLI_CMD_EXPORT(bt_restore, Bluetooth restore, prvCliCmdBtRestore)
+
+static void prvCliCmdBtRst(cli_printf cliprintf, int argc, char **argv) {
+    CHECK_CLI();
+
+    if (argc != 1) {
+        cliprintf("bt_rst\n");
+        return;
+    }
+
+    SendAtCmd(g_Esp32C3Uart, "AT+RST\r\n");
+    return;
+}
+CLI_CMD_EXPORT(bt_rst, Bluetooth restore, prvCliCmdBtRst)
 
 void UART5_IRQHandler(void) {
     if (g_Esp32C3Uart) {
