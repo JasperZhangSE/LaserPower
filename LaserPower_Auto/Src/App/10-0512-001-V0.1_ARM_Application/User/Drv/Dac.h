@@ -41,6 +41,7 @@ Status_t DrvDacTerm(void);
 
 Status_t DacSet(DacChan_t xChan, uint16_t usData);
 uint16_t DacGet(DacChan_t xChan);
+uint32_t DacGetValue(void);
 
 #ifdef __cplusplus
 }

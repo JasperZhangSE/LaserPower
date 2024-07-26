@@ -147,11 +147,25 @@ int PwmGet(uint16_t Id)
     return PwmInfo;
 }
 
+static void prvCliCmdSetCcsPwmDuty(cli_printf cliprintf, int argc, char **argv) {
+    CHECK_CLI();
+
+    if (argc != 2) {
+        cliprintf("pulse_set_duty DUTY\n");
+        return;
+    }
+
+    uint32_t usDuty = atoi(argv[1]);
+
+    SetADuty(usDuty);
+}
+CLI_CMD_EXPORT(set_ccs_duty, set Tim4 ch3 (constant wave frequency) pwm duty, prvCliCmdSetCcsPwmDuty)
+
 static void prvCliCmdSetCcsPwf(cli_printf cliprintf, int argc, char **argv) {
     CHECK_CLI();
 
     if (argc != 2) {
-        cliprintf("pulse_set_freq ON_OFF\n");
+        cliprintf("pulse_set_freq FREQ\n");
         return;
     }
 

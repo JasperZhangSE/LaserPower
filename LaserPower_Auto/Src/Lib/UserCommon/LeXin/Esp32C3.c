@@ -65,12 +65,26 @@ static uint8_t      s_ucEspRxBuffer[256];
 
 static void prvEsp32C3Task(void *pvPara)
 {
+    static uint16_t Esp32BtTrs = 0;
+    
     while (1) {
         static uint8_t  s_ucRecvBuf[MAX_MSG_SIZE];
         uint16_t        usRecvd = (uint16_t)RbufRead(s_xEspRbuf, s_ucRecvBuf, MAX_MSG_SIZE);
         if (usRecvd) {
             TRACE("EspCmd = %s\n", s_ucRecvBuf);
+            if (strstr((char*)s_ucRecvBuf, "BLECONN") != NULL) {
+                osDelay(5000);
+                SendAtCmd(g_Esp32C3Uart, "AT+BLESPPCFG=1,1,6,1,3\r");
+                osDelay(1000);
+                SendAtCmd(g_Esp32C3Uart, "AT+BLESPP\r");
+                Esp32BtTrs = 1;
+            }
         }
+        
+        if (Esp32BtTrs == 1) {
+            TRACE("Inter the bluetooth transmmit state.\n");
+        }
+        
         osDelay(10);
     }
 }

@@ -136,6 +136,11 @@ void HAL_DAC_MspDeInit(DAC_HandleTypeDef *pxDac) {
     }
 }
 
+uint32_t DacGetValue(void)
+{
+    return HAL_DAC_GetValue(&s_hDac, DAC_CHANNEL_1);
+}
+
 static void prvCliCmdDacStatus(cli_printf cliprintf, int argc, char **argv) {
     CHECK_CLI();
 
