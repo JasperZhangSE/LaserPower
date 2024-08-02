@@ -57,6 +57,7 @@
 #endif /* SYS_ASSERT */
 
 /* Local defines */
+#define LED_SAVELASTSTATES()  LedState.xLastLedState = LedState.xLedState;
 #define SYS_SAVELASTSTATES()  pxState->xLastState = pxState->xState;
 #define SYS_TICK_GET()        osKernelSysTick()
 #define LED_ALARM_R           LED1
@@ -121,7 +122,10 @@ uint8_t     g_ucVerChk        = 0;
 uint16_t    g_usSwInfo        = 0x0000;
 SysStatus_t g_xSysStatus;
 
+
+
 /* Local variables */
+static LedState_t LedState;
 static State_t  s_xState;
 static bool     s_bProc         = true;
 static bool     s_bManualCtrl   = true;
@@ -159,7 +163,10 @@ Status_t AppSysInit(void)
 
     /* Control mode selection  */
     /* Read EX_CTRL_EN  Level */
-//    th_CtrlMode = GpioGetInput(EX_CTRL_EN) == 0 ? 3 : th_CtrlMode;
+    if (th_CtrlMode != 2) {
+        th_CtrlMode = GpioGetInput(EX_CTRL_EN) == 0 ? 3 : 1;
+    }
+    
 
     switch (th_CtrlMode) {
     /* DAC Mode */
@@ -187,6 +194,9 @@ Status_t AppSysInit(void)
         ToggleCcsStatus(0);
         break;
     }
+    
+    LedState.xLedState = LED_POWER_OFF;
+    LED_SAVELASTSTATES();
 
     return STATUS_OK;
 }
@@ -885,6 +895,7 @@ static void prvFsmLaserMInit(State_t *pxState)
     else {
         pxState->xState    = FSM_ERROR;
         pxState->ulCounter = 0;
+        manual_ctrl_err = 0;
         prvEnterFsm();
         TRACE("[%6d] LaserMInit   -> Error\n", SYS_TICK_GET());
     }
@@ -898,6 +909,7 @@ static void prvFsmLaserMRun(State_t *pxState)
         pxState->xState         = FSM_ERROR;
         pxState->ulCounter      = 0;
         th_SysStatus.WORK_LASER = 0;
+        manual_ctrl_err = 0;
         prvEnterFsm();
         TRACE("[%6d] LaserMRun    -> Error\n", SYS_TICK_GET());
     }
@@ -998,7 +1010,8 @@ static void prvFsmError(State_t *pxState)
         case 3:
             GpioSetOutput(FAULT, 1);
         
-            if (prvChkPwr() && laser_on_pd_err == 1) {
+            if (prvChkAPwr() && laser_on_pd_err == 1 && manual_ctrl_err == 1) {
+                TRACE("1\n");
                 GpioSetOutput(BEEP_SW, 0);
 
                 GpioSetOutput(MOD_EN, 1);
@@ -1012,6 +1025,7 @@ static void prvFsmError(State_t *pxState)
                     TRACE("[%6d] Error        -> InfraredRun\n", SYS_TICK_GET());
                 }
                 else {
+                    TRACE("2\n");
                     pxState->xState    = FSM_IDLE;
                     pxState->ulCounter = 0;
                     ToggleAimLight(0);
@@ -1019,29 +1033,30 @@ static void prvFsmError(State_t *pxState)
                 }
             }
             
-            if (pxState->xLastState == FSM_IDLE && manual_ctrl_err == 1) {
-                if (prvChkAPwr()) {
-                    GpioSetOutput(MOD_EN, 1);
-                    pxState->xState    = FSM_IDLE;
-                    pxState->ulCounter = 0;
-                    TRACE("[%6d] Error        -> Idle\n", SYS_TICK_GET());
-                }
-            }
-            
+//            if (pxState->xLastState == FSM_IDLE && manual_ctrl_err == 1) {
+//                if (prvChkAPwr()) {
+//                    GpioSetOutput(MOD_EN, 1);
+//                    GpioSetOutput(FAULT, 0);
+//                    pxState->xState    = FSM_IDLE;
+//                    pxState->ulCounter = 0;
+//                    TRACE("[%6d] Error        -> Idle\n", SYS_TICK_GET());
+//                }
+//            }
+
             uint16_t ModEnStatus = GpioGetInput(EX_MOD_EN);
             if (manual_ctrl_err == 0 && ModEnStatus == 1) {
                 pxState->xState    = FSM_IDLE;
                 GpioSetOutput(MOD_EN, 1);
+                GpioSetOutput(FAULT, 0);
                 pxState->ulCounter = 0;
                 manual_ctrl_err = 1;
                 TRACE("[%6d] Error        -> Idle\n", SYS_TICK_GET());
             }
             else if (manual_ctrl_err == 0 && ModEnStatus == 0) {
-                TRACE("[%6d] Please make sure DC_OK.\n", SYS_TICK_GET());
+                TRACE("[%6d] Please make sure DC_OK and reset MOD_EN.\n", SYS_TICK_GET());
             }
             break;
     }
-    
 }
 
 static bool prvInitChkMPwr(void)
@@ -1213,7 +1228,6 @@ static void prvEnterFsm(void)
             GpioSetOutput(MOD_EN, 0);
             break;
     }
-    
 }
 
 static void prvProcManualCtrl(void)
@@ -1275,6 +1289,7 @@ static void prvProcPanelLed(void)
     uint16_t s_LASER_EN       = GpioGetInput(LASER_EN);
     uint16_t s_MPWR_EN        = GpioGetInput(MPWR_EN);
     int16_t  s_pdLight        = StcGetPdLight();
+    uint16_t usSafeLock = GpioGetInput(SAFE_LOCK);
     
 //    TRACE("s_PD = %d\n", s_PD);
 
@@ -1300,31 +1315,58 @@ static void prvProcPanelLed(void)
     /* Active */
     /* G: ((APWR1_EN && APWR1_CUR) || (APWR2_EN && APWR2_CUR) || (APWR3_EN && APWR3_CUR)) */
     /* R: !G */
-    static uint8_t s2         = 0xFF;
-    uint16_t       usApwr1Cur = AdcGet(APWR1_CUR);
-    uint16_t       usApwr2Cur = AdcGet(APWR2_CUR);
-    uint16_t       usApwr3Cur = AdcGet(APWR3_CUR);
-    if (((s_ucAPwrCtrl1 == APWR_ON) && (usApwr1Cur > 124 /*2A*/)) ||
-        ((s_ucAPwrCtrl2 == APWR_ON) && (usApwr2Cur > 124 /*2A*/)) ||
-        ((s_ucAPwrCtrl3 == APWR_ON) && (usApwr3Cur > 124 /*2A*/))) {
-        if (s2 != 1) {
-            GpioSetOutput(LED_ACTIVE_G, LED_ON);
-            GpioSetOutput(LED_ACTIVE_R, LED_OFF);
-            th_SysStatus.RUN = 1;
-            s2               = 1;
+    if (th_CtrlMode == 1|| th_CtrlMode == 2) {
+        static uint8_t s2         = 0xFF;
+        uint16_t       usApwr1Cur = AdcGet(APWR1_CUR);
+        uint16_t       usApwr2Cur = AdcGet(APWR2_CUR);
+        uint16_t       usApwr3Cur = AdcGet(APWR3_CUR);
+        if (((s_ucAPwrCtrl1 == APWR_ON) && (usApwr1Cur > 124 /*2A*/)) ||
+            ((s_ucAPwrCtrl2 == APWR_ON) && (usApwr2Cur > 124 /*2A*/)) ||
+            ((s_ucAPwrCtrl3 == APWR_ON) && (usApwr3Cur > 124 /*2A*/))) {
+            if (s2 != 1) {
+                GpioSetOutput(LED_ACTIVE_G, LED_ON);
+                GpioSetOutput(LED_ACTIVE_R, LED_OFF);
+                th_SysStatus.RUN = 1;
+                s2               = 1;
+            }
+        }
+        else {
+            if (s2 != 0) {
+                GpioSetOutput(LED_ACTIVE_G, LED_OFF);
+                GpioSetOutput(LED_ACTIVE_R, LED_ON);
+                th_SysStatus.RUN = 0;
+                s2               = 0;
+            }
         }
     }
-    else {
-        if (s2 != 0) {
-            GpioSetOutput(LED_ACTIVE_G, LED_OFF);
-            GpioSetOutput(LED_ACTIVE_R, LED_ON);
-            th_SysStatus.RUN = 0;
-            s2               = 0;
+    else if (th_CtrlMode == 3) {
+        static uint8_t s2         = 0xFF;
+        uint16_t       ExModEn   =  GpioGetInput(EX_MOD_EN);
+        uint16_t       usApwr1Cur = AdcGet(APWR1_CUR);
+        uint16_t       usApwr2Cur = AdcGet(APWR2_CUR);
+        uint16_t       usApwr3Cur = AdcGet(APWR3_CUR);
+        if (((ExModEn == 0) && (usApwr1Cur > 124 /*2A*/)) ||
+            ((ExModEn == 0) && (usApwr2Cur > 124 /*2A*/)) ||
+            ((ExModEn == 0) && (usApwr3Cur > 124 /*2A*/))) {
+            if (s2 != 1) {
+                GpioSetOutput(LED_ACTIVE_G, LED_ON);
+                GpioSetOutput(LED_ACTIVE_R, LED_OFF);
+                th_SysStatus.RUN = 1;
+                s2               = 1;
+            }
+        }
+        else {
+            if (s2 != 0) {
+                GpioSetOutput(LED_ACTIVE_G, LED_OFF);
+                GpioSetOutput(LED_ACTIVE_R, LED_ON);
+                th_SysStatus.RUN = 0;
+                s2               = 0;
+            }
         }
     }
 
-    State_t *pxState = &s_xState;
     /* Alarm */
+    State_t *pxState = &s_xState;
     uint8_t s3 = 0xFF;
     /* R: QBH_ON 1 */
     /* R: WATER_PRESS 1 */
@@ -1340,13 +1382,15 @@ static void prvProcPanelLed(void)
         (th_ModEn.CHAN3_CUR && (s_CHAN3_CUR > th_MaxCurAd)) || (th_ModEn.PD && (s_PD >= th_PdWarnL1)) ||
         (s_LASER_EN == 1) || 
         (th_PdLightEn && ((pxState->xState == FSM_LASERs_RUN) || (pxState->xState == FSM_LASERm_RUN)) && ((s_pdLight <= th_PdLight))) || 
-        (laser_on_pd_err == 0)) {
+        (laser_on_pd_err == 0) || (manual_ctrl_err == 0) ||
+        (usSafeLock == 1)) {
         if (s3 != 0) {
             GpioSetOutput(LED_ALARM_R, LED_ON);
             GpioSetOutput(LED_ALARM_G, LED_OFF);
             s3 = 0;
         }
     }
+    
     /* Y: Max temperature > over temperature warn threshold */
     /* Y: PD */
     /* Y: TODO: CAN */
@@ -1370,6 +1414,7 @@ static void prvProcPanelLed(void)
     /* Power led */
     /* Led ac ok */
 //    TRACE("PWR_LED_RUN \n");
+#if 0
     if ( s_PWR_INPUT_VOL >= 1000 /* 0.1V */){
         GpioSetOutput(LED_AC_OK, LED_ON);
         GpioSetOutput(LED_AC_FAIL, LED_OFF);
@@ -1397,6 +1442,107 @@ static void prvProcPanelLed(void)
     else {
         GpioSetOutput(LED_CAN_OK, LED_OFF);
         GpioSetOutput(LED_CAN_FAIL, LED_ON);
+    }
+#endif
+
+    switch (LedState.xLedState) {
+        case LED_POWER_OFF:
+
+            if (s_PWR_OUTPUT_VOL <= 650) {
+                /* 首次开机DC_OK前 */
+                LED_SAVELASTSTATES();
+                LedState.xLedState = LED_POWER_ON;
+                GpioSetOutput(LED_CAN_OK, LED_ON);
+                GpioSetOutput(LED_CAN_FAIL, LED_ON);
+                GpioSetOutput(LED_AC_OK, LED_ON);
+                GpioSetOutput(LED_AC_FAIL, LED_ON);
+                GpioSetOutput(LED_DC_OK, LED_ON);
+                GpioSetOutput(LED_DC_FAIL, LED_ON);
+            }
+
+            break;
+
+        case LED_POWER_ON:
+            if (s_PWR_INPUT_VOL >= 3800 /* 0.1V */ && s_PWR_OUTPUT_VOL >= 650) {
+                /* 首次开机DC_OK后 */
+                LED_SAVELASTSTATES();
+                LedState.xLedState = LED_READY;
+                GpioSetOutput(LED_CAN_OK, LED_ON);
+                GpioSetOutput(LED_CAN_FAIL, LED_OFF);
+                osDelay(1000);
+                GpioSetOutput(LED_AC_OK, LED_ON);
+                GpioSetOutput(LED_AC_FAIL, LED_OFF);
+                osDelay(1000);
+                GpioSetOutput(LED_DC_OK, LED_ON);
+                GpioSetOutput(LED_DC_FAIL, LED_OFF);
+            }
+            break;
+        
+        case LED_READY:
+
+            if (s_PWR_INPUT_VOL <= 3800 /* 0.1V */ && s_PWR_OUTPUT_VOL <= 650) {
+                /* 开机后断电 -> 等待二次上电 */
+                LED_SAVELASTSTATES();
+                LedState.xLedState = LED_ERROR;
+                GpioSetOutput(LED_CAN_OK, LED_OFF);
+                GpioSetOutput(LED_CAN_FAIL, LED_ON);
+                GpioSetOutput(LED_AC_OK, LED_OFF);
+                GpioSetOutput(LED_AC_FAIL, LED_ON);
+                GpioSetOutput(LED_DC_OK, LED_OFF);
+                GpioSetOutput(LED_DC_FAIL, LED_ON);
+            }
+            else if (s_PWR_INPUT_VOL >= 3800 /* 0.1V */ && s_PWR_OUTPUT_VOL <= 650) {
+                /* 主动关断 */
+                LED_SAVELASTSTATES();
+                LedState.xLedState = LED_SHUTDOWN;
+                GpioSetOutput(LED_CAN_OK, LED_ON);
+                GpioSetOutput(LED_CAN_FAIL, LED_OFF);
+                GpioSetOutput(LED_AC_OK, LED_ON);
+                GpioSetOutput(LED_AC_FAIL, LED_OFF);
+                GpioSetOutput(LED_DC_OK, LED_OFF);
+                GpioSetOutput(LED_DC_FAIL, LED_ON);
+            }
+
+            
+            break;
+        
+        case LED_ERROR:
+            if (s_PWR_INPUT_VOL >= 3800 /* 0.1V */) {
+                /* 开机后断电 -> 等待二次上电 */
+                LED_SAVELASTSTATES();
+                LedState.xLedState = LED_POWER_OFF;
+            }
+            break;
+        
+        case LED_SHUTDOWN:
+
+            if (s_PWR_OUTPUT_VOL >= 650) {
+                /* 再次开启DC */
+                LED_SAVELASTSTATES();
+                LedState.xLedState = LED_READY;
+                GpioSetOutput(LED_CAN_OK, LED_ON);
+                GpioSetOutput(LED_CAN_FAIL, LED_OFF);
+                GpioSetOutput(LED_AC_OK, LED_ON);
+                GpioSetOutput(LED_AC_FAIL, LED_OFF);
+                GpioSetOutput(LED_DC_OK, LED_ON);
+                GpioSetOutput(LED_DC_FAIL, LED_OFF);
+            }
+            else if (s_PWR_INPUT_VOL <= 3800 /* 0.1V */ && s_PWR_OUTPUT_VOL <= 650) {
+                /* 开机后断电 -> 等待二次上电 */
+                LED_SAVELASTSTATES();
+                LedState.xLedState = LED_ERROR;
+                GpioSetOutput(LED_CAN_OK, LED_OFF);
+                GpioSetOutput(LED_CAN_FAIL, LED_ON);
+                GpioSetOutput(LED_AC_OK, LED_OFF);
+                GpioSetOutput(LED_AC_FAIL, LED_ON);
+                GpioSetOutput(LED_DC_OK, LED_OFF);
+                GpioSetOutput(LED_DC_FAIL, LED_ON);
+            }
+            break;
+
+        default:
+            /* Wo should never get here. */
+            break;
     }
 
     /* System status update */
@@ -1463,8 +1609,6 @@ static void prvProcPanelLed(void)
         th_SysStatus.ALARM_PD = 0;
         th_SysStatus.WARN_PD  = 0;
     }
-    
-    
 }
 
 static void prvCliCmdSysFsm(cli_printf cliprintf, int argc, char **argv)
@@ -1721,3 +1865,41 @@ static void prvCliCmdSysDiag(cli_printf cliprintf, int argc, char **argv)
     
 }
 CLI_CMD_EXPORT(sys_diag, show sys diag, prvCliCmdSysDiag)
+
+static void prvCliCmdLedDiag(cli_printf cliprintf, int argc, char **argv)
+{
+    CHECK_CLI();
+
+    if (argc != 1) {
+        cliprintf("led_diag\n");
+        return;
+    }
+    
+    switch ((int)(LedState.xLedState)) {
+        case 0:
+            cliprintf("LED_STATUS  :  LED_POWER_OFF\n");
+        break;
+        
+        case 1:
+            cliprintf("LED_STATUS  :  LED_POWER_ON\n");
+        break;
+    
+        case 2:
+            cliprintf("LED_STATUS  :  LED_READY\n");
+        break;
+        
+        case 3:
+            cliprintf("LED_STATUS  :  LED_ERROR\n");
+        break;
+        
+        case 4:
+            cliprintf("LED_STATUS  :  LED_ERROR\n");
+        break;
+
+        default:
+            cliprintf("LED_STATUS  :  UNKNOW_STATUS");
+        break;
+    }
+    
+}
+CLI_CMD_EXPORT(led_diag, show led diag, prvCliCmdLedDiag)

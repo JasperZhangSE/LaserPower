@@ -74,6 +74,14 @@ typedef enum {
     FSM_ERROR
 }Fsm_t;
 
+typedef enum {
+    LED_POWER_OFF,
+    LED_POWER_ON,
+    LED_READY,
+    LED_ERROR,
+    LED_SHUTDOWN
+}LedFsm_t;
+
 typedef union {
     uint16_t all;
     struct {
@@ -103,6 +111,11 @@ typedef struct {
     Fsm_t xLastState;           /* Previous state of the state machine */
     Fsm_t xNextState;           /* Next state of the state machine */
 }State_t;
+
+typedef struct {
+    LedFsm_t xLedState;
+    LedFsm_t xLastLedState;
+}LedState_t;
 
 /* Forward declarations */
 extern State_t *g_pxState;

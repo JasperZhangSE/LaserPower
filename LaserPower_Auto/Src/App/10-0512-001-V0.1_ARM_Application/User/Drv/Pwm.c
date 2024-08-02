@@ -190,3 +190,17 @@ static void prvCliCmdTogleAimLight(cli_printf cliprintf, int argc, char **argv) 
     ToggleAimLight(en);
 }
 CLI_CMD_EXPORT(toggle_aim_light, Toggle aim light, prvCliCmdTogleAimLight)
+
+static void prvCliCmdTogleCcs(cli_printf cliprintf, int argc, char **argv) {
+    CHECK_CLI();
+
+    if (argc != 2) {
+        cliprintf("toggle_aim_light ON_OFF\n");
+        return;
+    }
+
+    uint32_t en = atoi(argv[1]);
+
+    ToggleCcsStatus(en);
+}
+CLI_CMD_EXPORT(toggle_ccs, Toggle ccs, prvCliCmdTogleCcs)

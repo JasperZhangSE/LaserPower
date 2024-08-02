@@ -71,18 +71,19 @@ static void prvEsp32C3Task(void *pvPara)
         static uint8_t  s_ucRecvBuf[MAX_MSG_SIZE];
         uint16_t        usRecvd = (uint16_t)RbufRead(s_xEspRbuf, s_ucRecvBuf, MAX_MSG_SIZE);
         if (usRecvd) {
-            TRACE("EspCmd = %s\n", s_ucRecvBuf);
+            TRACE("pucBuf = %s\n", s_ucRecvBuf);
             if (strstr((char*)s_ucRecvBuf, "BLECONN") != NULL) {
                 osDelay(5000);
-                SendAtCmd(g_Esp32C3Uart, "AT+BLESPPCFG=1,1,6,1,3\r");
+                SendAtCmd(g_Esp32C3Uart, "AT+BLESPPCFG=1,1,6,1,3\r\n");
                 osDelay(1000);
-                SendAtCmd(g_Esp32C3Uart, "AT+BLESPP\r");
+                SendAtCmd(g_Esp32C3Uart, "AT+BLESPP\r\n");
                 Esp32BtTrs = 1;
             }
         }
         
         if (Esp32BtTrs == 1) {
             TRACE("Inter the bluetooth transmmit state.\n");
+            Esp32BtTrs = 0;
         }
         
         osDelay(10);
@@ -107,6 +108,8 @@ Status_t Esp32C3Init(void) {
 
 Status_t BtInit(UartHandle_t UartHandle)
 {
+    SendAtCmd(UartHandle, "AT+RST\r\n");
+    osDelay(3000);
     SendAtCmd(UartHandle, "AT+BLEINIT=2\r\n");
     SendAtCmd(UartHandle, "AT+BLEGATTSSRVCRE\r\n");
     SendAtCmd(UartHandle, "AT+BLEGATTSSRVSTART\r\n");
@@ -128,16 +131,14 @@ Status_t SendAtCmd(UartHandle_t UartHandle, const char * CmdStr)
     else if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
         osDelay(1000);
     }
-
     return STATUS_OK;
 }
 
 static Status_t prvUartRecvWbc(uint8_t *pucBuf, uint16_t usLength, void *pvIsrPara) {
-    
     TRACE("pucBuf = %s\n", pucBuf);
-    return STATUS_OK;
+//    return STATUS_OK;
     
-//    return (usLength == RbufWrite(s_xEspRbuf, pucBuf, usLength)) ? STATUS_OK : STATUS_ERR;
+    return (usLength == RbufWrite(s_xEspRbuf, pucBuf, usLength)) ? STATUS_OK : STATUS_ERR;
 }
 
 static void prvCliCmdWbcSend(cli_printf cliprintf, int argc, char **argv) {
@@ -153,7 +154,7 @@ static void prvCliCmdWbcSend(cli_printf cliprintf, int argc, char **argv) {
 
     cliprintf("cmd : %s\n", pucBuffer);
     
-    UartBlkSend(g_Esp32C3Uart, pucBuffer, sizeof(pucBuffer) / sizeof(pucBuffer[0]), 10);
+    UartBlkSend(g_Esp32C3Uart, pucBuffer, strlen((char *)pucBuffer), 10);
 
     return;
 }
